@@ -1,0 +1,23 @@
+services:
+  zebra-pos:
+    build: .
+    image: zebra-pos
+    container_name: zebra-pos
+    restart: unless-stopped
+    ports:
+      # host 5051 -> container 5000. The original app uses 5050; 13+ other
+      # containers run on this Pi — VERIFY 5051 is actually free before the
+      # first deploy (CLAUDE.md Infrastructure), then give this app its own
+      # Caddy site block, same cert pattern as the original's :8443.
+      - "5051:5000"
+    volumes:
+      # THE SAME volume as the original nepal-pos container — both apps read
+      # and write the one live store.db/sales.db (WAL mode handles the two
+      # processes; see db.py).
+      - /srv/dev-disk-by-uuid-d83cca89-bc12-4315-a166-686c581461cf/Docker-Data/nepal-pos:/app/data
+    environment:
+      # Session signing key, from a .env file next to this compose file (not
+      # committed). Compose fails fast with this message if it's missing.
+      # The admin password is NOT set here — it's the same hashed password the
+      # original app stored in the shared settings table.
+      - SECRET_KEY=${SECRET_KEY:?set SECRET_KEY in .env}

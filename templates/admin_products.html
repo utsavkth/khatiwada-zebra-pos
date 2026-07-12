@@ -1,0 +1,74 @@
+{% extends "admin_base.html" %}
+{% block title %}Products{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Products</h1>
+  <a class="button" href="{{ url_for('admin_product_new') }}">+ Add product</a>
+</div>
+
+{% if dup_extra_count %}
+<p class="error">⚠️ {{ dup_extra_count }} duplicate product cop{{ 'y' if dup_extra_count == 1 else 'ies' }} found.
+  <a href="{{ url_for('admin_duplicates') }}"><strong>Review &amp; clean up →</strong></a></p>
+{% endif %}
+
+<form method="get" class="filter-bar" id="admin-filter">
+  <input type="search" id="admin-search" name="q" value="{{ query }}"
+         placeholder="Search name or barcode…" autocomplete="off">
+  <select id="admin-category" name="category">
+    <option value="">All categories</option>
+    {% for c in categories %}
+      <option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+  <a id="admin-clear" href="{{ url_for('admin_products') }}">Clear</a>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th></th><th>Name</th><th>Barcode</th><th>Category</th>
+      <th class="num">Price</th><th>Unit</th><th>Weighed</th><th>Status</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in products %}
+    <tr class="{{ 'inactive' if not p.active }}" data-search="{{ (p.name ~ ' ' ~ (p.barcode or '')) | lower }}">
+      <td class="thumb-cell">
+        {% if p.image_path %}
+          <img class="table-thumb" src="{{ url_for('product_image', filename=p.image_path) }}" alt="">
+        {% else %}
+          <span class="table-thumb letter">{{ p.name[:1] | upper }}</span>
+        {% endif %}
+      </td>
+      <td><strong>{{ p.name }}</strong></td>
+      <td>{{ p.barcode or "—" }}</td>
+      <td><span class="chip chip-{{ p.category }}">{{ p.category }}</span></td>
+      <td class="num">{{ p.price | rs }}</td>
+      <td>{{ p.unit }}</td>
+      <td>{{ "yes" if p.is_weighed else "no" }}</td>
+      <td><span class="chip {{ 'chip-active-state' if p.active else 'chip-inactive-state' }}">{{ "active" if p.active else "inactive" }}</span></td>
+      <td class="actions">
+        <a class="button small" href="{{ url_for('admin_product_edit', product_id=p.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('admin_product_active', product_id=p.id, q=query, category=category) }}">
+          <input type="hidden" name="active" value="{{ 0 if p.active else 1 }}">
+          <button type="submit" class="small {{ 'danger' if p.active else '' }}">
+            {{ "Deactivate" if p.active else "Reactivate" }}
+          </button>
+        </form>
+        <form method="post" action="{{ url_for('admin_product_delete', product_id=p.id, q=query, category=category) }}"
+              onsubmit="return confirm('Permanently delete this product? This cannot be undone. (Past sales are not affected.)');">
+          <button type="submit" class="small danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" class="empty">No products found.</td></tr>
+    {% endfor %}
+    <tr id="no-matches" hidden><td colspan="9" class="empty">No matching products.</td></tr>
+  </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='admin-products.js') }}"></script>
+{% endblock %}
