@@ -1,0 +1,73 @@
+{% extends "admin_base.html" %}
+{% block title %}{{ "Add product" if mode == "new" else "Edit product" }}{% endblock %}
+{% block content %}
+<h1>{{ "Add product" if mode == "new" else "Edit product" }}</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if duplicate %}
+<p class="error">⚠️ <strong>Possible duplicate.</strong> "{{ duplicate.name }}" ({{ duplicate.price | rs }}{% if duplicate.barcode %} · barcode {{ duplicate.barcode }}{% endif %}) is already in the system. Check it's not the same item — or press <strong>Add anyway</strong> below to create it regardless.</p>
+{% endif %}
+
+<form method="post" class="product-form" enctype="multipart/form-data">
+  {% if duplicate %}<input type="hidden" name="confirm_duplicate" value="1">{% endif %}
+  <label>Name
+    <input name="name" required value="{{ product.name if product else '' }}">
+  </label>
+  <div class="image-field">
+    <span class="image-field-label">Photo (optional — shown on the cashier screen)</span>
+    {% if product and product.image_path %}
+      <div class="current-image">
+        <img src="{{ url_for('product_image', filename=product.image_path) }}" alt="{{ product.name }}">
+        <label class="checkbox"><input type="checkbox" name="remove_image" value="1"> Remove this photo</label>
+      </div>
+    {% endif %}
+    <input type="file" name="image" accept="image/*">
+    <span class="hint">A clear photo on a plain background works best. Big images are shrunk automatically.</span>
+  </div>
+  <label>Nepali name (optional — shown on the cashier when the Nepali toggle is on; falls back to the name above)
+    <input name="name_ne" value="{{ product.name_ne if product and product.name_ne else '' }}" placeholder="e.g. बासमती चामल">
+  </label>
+  <label>Barcode (leave empty if none)
+    <input name="barcode" value="{{ product.barcode if product and product.barcode else '' }}">
+  </label>
+  <label>Category
+    <select name="category">
+      {% for c in categories %}
+        <option value="{{ c }}" {% if product and product.category == c %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Price (Rs.)
+    <input name="price" type="number" step="0.01" min="0.01" required
+           value="{{ product.price if product else '' }}">
+  </label>
+  <label>Unit
+    <select name="unit">
+      {% for u in units %}
+        <option value="{{ u }}" {% if product and product.unit == u %}selected{% endif %}>{{ u }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="checkbox">
+    <input type="checkbox" name="is_weighed" value="1" {% if product and product.is_weighed %}checked{% endif %}>
+    Sold loose — quantity entered at the till (set Unit above to kg or litre)
+  </label>
+  <label class="checkbox">
+    <input type="checkbox" name="pinned" value="1" {% if product and product.pinned %}checked{% endif %}>
+    Show as a one-tap button on the sales screen (for fixed-price items you sell often, e.g. Milk)
+  </label>
+  <label>Cashier group (which quick-tap button this appears under; blank = none, or auto-sorted for weighed items)
+    <select name="weighed_group">
+      <option value="">none / auto</option>
+      {% for g in groups %}
+        <option value="{{ g.name }}" {% if product and product.weighed_group == g.name %}selected{% endif %}>
+          {{ g.name }} ({{ "weighed" if g.is_weighed else "fixed" }})
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+  <div class="form-actions">
+    <button type="submit">{{ "Add anyway" if duplicate else ("Add product" if mode == "new" else "Save changes") }}</button>
+    <a class="button secondary" href="{{ url_for('admin_products') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

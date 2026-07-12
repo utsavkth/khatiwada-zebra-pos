@@ -169,25 +169,53 @@ Tailscale cert can likely be reused, same pattern as the original app's
 `:8443` Caddy block — see the original CLAUDE.md decision 4 for the
 cert/domain details).
 
+## Project structure
+
+- `app.py` — all Flask routes (root `/` is the Zebra cashier; `/admin` is this
+  app's own copy of the proven admin portal; same JSON APIs as the original)
+- `db.py` — database helpers copied from the original, plus WAL mode + busy
+  timeout on every connection (shared-database concurrency, see above)
+- `nepali_date.py` — Bikram Sambat conversion for the admin reports
+- `templates/zebra.html`, `static/zebra.js`, `static/zebra.css` — the Zebra
+  cashier UI (always-focused `#wedge-input`, payment step, saved carts);
+  `zebra.css` loads after `style.css` and reuses its components
+- `templates/admin_*.html`, `static/admin.css`, `static/admin-products.js` —
+  the admin portal (copied, unchanged)
+- `static/fonepay-static-qr.jpg` — the shop's REAL static Fonepay QR
+  (terminal 2222150006683313), cropped from the official Fonepay PDF; shown on
+  the payment step. `renderPaymentQr(saleTotal)` in `static/zebra.js` is the
+  single marked swap point (`TODO(fonepay-dynamic-qr)`) for the blocked
+  Dynamic QR API.
+- `Dockerfile` / `docker-compose.yml` — own container `zebra-pos`, host port
+  5051 (VERIFY free on the Pi before first deploy), SAME data volume as the
+  original app
+- `tests.py` — full scenario suite adapted from the original (`python
+  tests.py`, throwaway temp database)
+
 ## Build phases (draft)
 
-1. Set up new repo, copy proven code (db.py, admin, auth, reports,
-   CSV import/export) from the original app as a starting base
-2. Add WAL mode + careful connection handling for shared-database
-   concurrent access
-3. Build the new Zebra-optimized cashier UI (scan-driven, one-handed,
-   ~6" screen)
-4. Build named/saved carts with server-side persistence
+1. ✅ Set up new repo, copy proven code (db.py, admin, auth, reports,
+   CSV import/export) from the original app as a starting base (2026-07-13)
+2. ✅ Add WAL mode + careful connection handling for shared-database
+   concurrent access (2026-07-13 — WAL + 5s busy timeout on every connection)
+3. ✅ Build the new Zebra-optimized cashier UI (scan-driven, one-handed,
+   ~6" screen) (2026-07-13 — includes the payment step in its allowed
+   manual-confirmation form: real static Fonepay QR + PAYMENT RECEIVED tap)
+4. Build named/saved carts with server-side persistence (an INTERIM
+   localStorage save/park-cart exists on the cashier meanwhile — device-local
+   only, to be replaced by this phase, flagged not silent)
 5. Build WebSocket live sync between Zebra cashier view and Chromebook
    register view
-6. Test locally (can be done before the physical Zebra arrives — use
+6. ✅ Test locally (can be done before the physical Zebra arrives — use
    browser dev tools to simulate the screen size, and simulate barcode
    scans by typing + Enter into the focused field, exactly matching what
-   DataWedge will do)
+   DataWedge will do) (2026-07-13 — full suite passing + simulated-scan
+   browser verification at handheld viewport)
 7. Test on the real Zebra TC53 once purchased and configured (DataWedge
    profile setup is a device-side task, not app code)
 8. Once Fonepay API access is confirmed: build QR generation + webhook
-   payment confirmation
+   payment confirmation (the static-QR payment step and its swap point are
+   already in place — only the dynamic half is blocked)
 9. Full end-to-end testing in Sydney before shipping the Zebra to Nepal
 10. Deploy to the Pi, test over Tailscale, decide when/how to cut over
     from the original app
