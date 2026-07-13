@@ -1,7 +1,23 @@
-/* Zebra POS v2 — layout for the Zebra TC53 handheld (6" 1080x2160 portrait,
-   ~412 CSS px wide). Loaded AFTER style.css: reuses its modals, numpad, bill
-   lines, search results and tile styles; this file only lays out the page as a
-   single tall column with the cart taking the leftover height. */
+/* Zebra POS v2 — layout + "Signal" visual refresh for the Zebra TC53 handheld
+   (6" 1080x2160 portrait, ~412 CSS px wide). Loaded AFTER style.css and ONLY on
+   the zebra cashier page: it reuses style.css's modals, numpad, bill lines,
+   search results and tile structure, then restyles them to the "Signal"
+   direction (dense, tight 8–12px corners, tabular-numeral money, blue primary)
+   per the 2026-07 design handoff. Same DOM, ids and behavior throughout. */
+
+/* Zebra-scoped design tokens. This file is only linked from zebra.html, so
+   overriding here restyles the handheld WITHOUT repointing style.css's shared
+   --brand/--accent tokens (which the admin portal and the future Chromebook
+   register view keep using as-is — see the handoff's implementation note 1). */
+:root {
+  --z-primary: #2563eb;        /* blue-600 — handheld primary action colour */
+  --z-primary-dark: #1d4ed8;   /* blue-700 */
+  --z-primary-soft: #eff6ff;   /* blue-50 — readouts, icon-button backgrounds */
+  --z-primary-border: #bfdbfe; /* blue-200 */
+  --z-focus-ring: #dbeafe;     /* blue-100 — wedge input / field focus ring */
+  --radius: 10px;              /* tightened from the shared 14px for density */
+  --radius-sm: 8px;
+}
 
 .z-layout {
   display: flex;
@@ -14,37 +30,58 @@
   margin: 0 auto;
 }
 
-/* ---- Header (compact) ---- */
+/* ---- Header ---- */
 
+/* Dark slate header (same value as the shared --header/--ink): a deliberate
+   return to the original app's dark header for cross-device brand consistency
+   — this reverses the earlier "light header on the Zebra" choice on purpose
+   (confirmed in the Signal design handoff). The base .lang-toggle/.admin-link
+   pill styles from style.css are designed for a dark header, so they apply
+   here unmodified apart from the touch-target bump below. */
 .z-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--header);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+.z-header-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10px 14px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
+  gap: 8px;
+  min-width: 0;
 }
-.z-brand { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em; }
-.z-datetime { font-size: 0.78rem; color: var(--muted); }
-.z-header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-/* The base .lang-toggle is styled for the original app's dark header; the
-   Zebra header is light, so restore dark-on-light colours here (the admin
-   link reuses the same pill style). */
+.z-brand {
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: #fff;
+  white-space: nowrap;
+  flex-shrink: 0; /* the shop name never truncates; the date/clock gives way */
+}
+.z-datetime {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.z-header-actions { display: flex; align-items: center; gap: 6px; }
+/* Keep the one-handed hit target at 44px+ even though the pills are visually
+   compact (handoff: bump from the mockup's 36px for the real build). */
 .z-header .lang-toggle {
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--panel);
-  color: var(--ink);
-  font-weight: 700;
-  font-size: 0.9rem;
-  cursor: pointer;
+  font-size: 0.75rem;
+  justify-content: center;
 }
-.z-header .lang-toggle:hover, .z-header .lang-toggle:active { background: #f1f5f9; }
+#lang-toggle { flex: 1; }
 
 /* ---- Wedge input row ---- */
 
@@ -53,27 +90,29 @@
   flex: 1;
   min-width: 0;
   height: var(--touch);
-  padding: 0 16px;
-  border: 2px solid var(--accent);
+  padding: 0 14px;
+  border: 2px solid var(--z-primary);
   border-radius: var(--radius);
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   background: var(--panel);
   box-shadow: var(--shadow-sm);
 }
-#wedge-input:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-sm); }
+/* The wedge input is kept focused at all times (scan target), so this ring is
+   effectively the resting state. */
+#wedge-input:focus { outline: none; box-shadow: 0 0 0 3px var(--z-focus-ring), var(--shadow-sm); }
 .z-quick-add-btn {
   width: var(--touch);
   height: var(--touch);
   flex-shrink: 0;
-  border: 2px dashed #bfdbfe;
+  border: 2px dashed #93c5fd;
   border-radius: var(--radius);
   background: var(--panel);
-  color: var(--accent);
-  font-size: 1.5rem;
+  color: var(--z-primary);
+  font-size: 1.4rem;
   font-weight: 700;
   cursor: pointer;
 }
-.z-quick-add-btn:active { background: var(--accent-soft); }
+.z-quick-add-btn:active { background: var(--z-primary-soft); }
 
 .z-search-results { max-height: 40dvh; overflow-y: auto; }
 
@@ -85,47 +124,87 @@
   gap: 8px;
   padding-bottom: 2px;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.z-quick-taps::-webkit-scrollbar { display: none; }
+/* 92px minimum stays — one-handed tap target while walking (do not shrink). */
 .z-quick-taps .tap {
   flex: 0 0 auto;
   min-width: 92px;
   min-height: 92px;
   padding: 10px 8px;
   gap: 5px;
-  border-radius: 14px;
+  border-radius: 12px;
 }
-.z-quick-taps .tap-media { width: 40px; height: 40px; border-radius: 10px; font-size: 1.25rem; }
-.z-quick-taps .tap-media svg { width: 24px; height: 24px; }
-.z-quick-taps .tap-name { font-size: 0.9rem; }
-.z-quick-taps .tap-sub { font-size: 0.72rem; }
+.z-quick-taps .tap-media { width: 36px; height: 36px; border-radius: 9px; font-size: 1.1rem; }
+.z-quick-taps .tap-media svg { width: 20px; height: 20px; }
+.z-quick-taps .tap-name { font-size: 0.78rem; font-weight: 800; }
+.z-quick-taps .tap-sub { font-size: 0.68rem; }
 
 /* ---- Saved (parked) carts ---- */
 
-.z-parked-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.z-parked-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .z-parked-row[hidden] { display: none; } /* display:flex would beat [hidden] */
-.z-parked-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-.z-parked-chips { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.z-parked-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.z-parked-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.z-parked-chips::-webkit-scrollbar { display: none; }
 .z-parked-chip {
   flex: 0 0 auto;
-  min-height: 40px;
-  padding: 0 14px;
+  min-height: 34px;
+  padding: 0 12px;
   border: 1px solid #c7d2fe;
   border-radius: 999px;
   background: #eef2ff;
   color: #4338ca;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
   white-space: nowrap;
 }
 .z-parked-chip:active { background: #e0e7ff; }
 
-/* ---- Cart (takes the leftover height) ---- */
+/* ---- Cart (takes the leftover height; denser lines than the shared app) ---- */
 
 .z-cart { flex: 1; min-height: 0; }
 .z-cart-name { color: var(--ink); text-transform: none; letter-spacing: 0; }
 .z-cart-empty { text-align: center; color: var(--muted); padding: 26px 10px; font-size: 1rem; }
 .z-cart-empty[hidden] { display: none; }
+
+.z-cart .bill-title { padding: 9px 12px; font-size: 0.85rem; }
+.z-cart .btn-clear-bill { min-height: 28px; padding: 0 11px; font-size: 0.7rem; }
+.z-cart .bill-lines li { gap: 6px; padding: 9px 12px; }
+/* The name identifies the line; thumbnails cost too much width at 412px. */
+.z-cart .bill-line-thumb { display: none; }
+.z-cart .bill-line-name { font-weight: 700; font-size: 0.86rem; }
+.z-cart .bill-line-detail { font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+.z-cart .bill-line-total { font-weight: 800; font-size: 0.84rem; font-variant-numeric: tabular-nums; }
+.z-cart .bill-line-stepper { gap: 3px; }
+.z-cart .bill-step { width: 26px; height: 26px; border-radius: 8px; font-size: 0.8rem; }
+.z-cart .bill-step-qty { min-width: 16px; font-size: 0.8rem; }
+.z-cart .bill-line-edit {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--z-primary-soft);
+  color: var(--z-primary);
+  font-size: 0.78rem;
+}
+.z-cart .bill-line-edit:hover { background: var(--z-focus-ring); }
+.z-cart .bill-line-remove { width: 28px; height: 28px; border-radius: 8px; font-size: 0.95rem; }
 
 /* ---- Bottom bar: total + Save Cart / Confirm Sale ---- */
 
@@ -134,34 +213,168 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
-  padding: 10px 14px 12px;
+  padding: 10px 12px 12px;
 }
-.z-footer .bill-total-row { padding: 2px 2px 10px; }
+.z-footer .bill-total-row { font-size: 0.85rem; padding: 2px 2px 9px; }
+.z-footer .bill-total-row strong {
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
 .z-footer-btns { display: flex; gap: 8px; }
+/* Tight padding so "CONFIRM SALE · Rs. 1,250.00" stays on one line at 412px. */
+.z-footer-btns .btn { min-height: 48px; border-radius: 9px; box-shadow: none; padding: 0 10px; }
 .z-btn-save-cart {
   flex: 1;
   background: var(--panel);
   color: #4338ca;
   border: 2px solid #c7d2fe;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 .z-btn-save-cart:disabled { opacity: 0.45; }
-.z-btn-confirm { flex: 1.6; }
+/* Solid blue primary (shows the live total on its face via zebra.js). */
+.z-btn-confirm {
+  flex: 1.6;
+  background: var(--z-primary);
+  font-size: 0.84rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Modal chrome (shared by all zebra modals) ---- */
+
+.modal-box h3 { font-size: 1.15rem; font-weight: 800; }
+.modal-actions .btn { min-height: 52px; border-radius: 10px; font-size: 0.88rem; }
+/* Primary modal action is the handheld blue, not the shared green gradient. */
+.btn-ok { background: var(--z-primary); font-weight: 800; }
+/* Primary gets more width than Cancel/Back where the mockup says so. */
+#payment-received, #quick-add-save { flex: 1.4; }
 
 /* ---- Payment step ---- */
 
-.z-payment-box { text-align: center; }
-.z-payment-total { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 10px; }
+.z-payment-box { text-align: center; gap: 14px; }
+.z-payment-total {
+  font-size: 2.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
 .z-payment-qr-area {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 180px;
+  min-height: 210px;
   background: #fff;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px;
+  border-radius: 12px;
+  padding: 10px;
 }
 .z-payment-qr { max-width: 100%; max-height: 46dvh; border-radius: 6px; }
 .z-qr-missing { color: var(--muted); font-size: 0.95rem; padding: 20px 14px; }
-.z-payment-hint { color: var(--muted); font-size: 0.9rem; margin-top: 10px; }
+/* Keep breathing room below the hint: a future "payment confirmed
+   automatically" state (checkmark + auto-advance) slots in here once the
+   Fonepay Dynamic QR API unblocks — do not build that state yet. */
+.z-payment-hint { color: var(--muted); font-size: 0.86rem; line-height: 1.4; margin: 0; }
+
+/* ---- Weight/quantity pad + price override readouts (blue, not green) ---- */
+
+#weight-modal h3 { font-size: 1.08rem; }
+.weight-display {
+  font-size: 2.1rem;
+  font-weight: 800;
+  padding: 16px;
+  background: var(--z-primary-soft);
+  border: 1px solid var(--z-primary-border);
+  border-radius: 12px;
+  color: var(--z-primary-dark);
+}
+#weight-unit { font-size: 1.1rem; font-weight: 700; }
+.weight-line-total {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--z-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.preset-chip {
+  min-height: 46px;
+  border: 1px solid var(--z-primary-border);
+  background: var(--z-primary-soft);
+  color: var(--z-primary-dark);
+  font-size: 0.9rem;
+}
+.preset-chip:hover { background: var(--z-focus-ring); }
+.preset-chip.selected {
+  background: var(--z-primary);
+  border-color: var(--z-primary);
+  color: #fff;
+}
+
+.numpad { gap: 8px; }
+.numpad button { min-height: 54px; font-size: 1.3rem; border-radius: 10px; }
+/* The price modal carries an extra "current price" line — slightly shorter
+   keys keep it on-screen without scrolling. */
+#price-modal .numpad button { min-height: 52px; font-size: 1.25rem; }
+.price-current { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+#price-modal .weight-line-total { font-size: 0.95rem; }
+
+/* ---- Variety picker ---- */
+
+.variety-list { gap: 9px; }
+.variety-list button {
+  min-height: 62px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  border: 1px solid #bbf7d0;
+  border-radius: 11px;
+  background: #f0fdf4;
+  color: #15803d;
+}
+.variety-list button:hover { background: #dcfce7; }
+.variety-list button:active { background: #bbf7d0; }
+.variety-list .result-price { color: #16a34a; font-variant-numeric: tabular-nums; }
+.variety-thumb { width: 36px; height: 36px; border-radius: 9px; }
+/* Letter fallback when the product has no photo (same idea as .tap-media.letter). */
+.variety-badge {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: #dcfce7;
+  color: #15803d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+/* ---- Quick Add / Save-cart form fields ---- */
+
+.field { gap: 5px; }
+.field > span { font-size: 0.82rem; font-weight: 700; color: #334155; }
+.field input, .field select {
+  min-height: 48px;
+  font-size: 0.95rem;
+  padding: 0 12px;
+  border-radius: 9px;
+}
+.field input:focus, .field select:focus {
+  border-color: var(--z-primary);
+  box-shadow: 0 0 0 3px var(--z-focus-ring);
+}
+.field-checkbox { gap: 10px; min-height: 36px; }
+.field-checkbox > span { font-size: 0.85rem; font-weight: 600; }
+.field-checkbox input { width: 24px; height: 24px; accent-color: var(--z-primary); }
+.field-disabled { opacity: 0.5; }
+.barcode-note { font-size: 0.8rem; padding: 9px 11px; border-radius: 9px; }
+
+#cart-name-modal .field > span { font-size: 0.85rem; }
+#cart-name-modal .field input {
+  min-height: 52px;
+  font-size: 1rem;
+  padding: 0 14px;
+  border-radius: 10px;
+}

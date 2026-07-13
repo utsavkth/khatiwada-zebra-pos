@@ -427,7 +427,16 @@ function openVarietyList(group) {
     price.className = "result-price";
     price.textContent = formatRs(p.price) + (p.is_weighed ? perUnit(p.unit) : "");
     const thumb = productThumb(p, "variety-thumb");
-    if (thumb) btn.appendChild(thumb);
+    if (thumb) {
+      btn.appendChild(thumb);
+    } else {
+      // Letter badge fallback, same idea as the quick-tap tiles' .letter media
+      const badge = document.createElement("span");
+      badge.className = "variety-badge";
+      const initial = (p.name || "").trim().charAt(0).toUpperCase();
+      badge.textContent = initial || "•";
+      btn.appendChild(badge);
+    }
     btn.append(name, price);
     btn.addEventListener("click", () => {
       varietyModal.hidden = true;
