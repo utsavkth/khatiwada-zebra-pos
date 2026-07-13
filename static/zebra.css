@@ -222,10 +222,12 @@
   font-variant-numeric: tabular-nums;
 }
 .z-footer-btns { display: flex; gap: 8px; }
-/* Tight padding so "CONFIRM SALE · Rs. 1,250.00" stays on one line at 412px. */
-.z-footer-btns .btn { min-height: 48px; border-radius: 9px; box-shadow: none; padding: 0 10px; }
+/* nowrap + a fixed-width SAVE CART so "CONFIRM SALE · Rs. 12,500.00" really
+   does stay on one line at 412px (flex ratios alone let it wrap). */
+.z-footer-btns .btn { min-height: 48px; border-radius: 9px; box-shadow: none; padding: 0 10px; white-space: nowrap; }
 .z-btn-save-cart {
-  flex: 1;
+  flex: 0 0 auto;
+  padding: 0 14px;
   background: var(--panel);
   color: #4338ca;
   border: 2px solid #c7d2fe;
@@ -235,9 +237,10 @@
 .z-btn-save-cart:disabled { opacity: 0.45; }
 /* Solid blue primary (shows the live total on its face via zebra.js). */
 .z-btn-confirm {
-  flex: 1.6;
+  flex: 1;
+  min-width: 0;
   background: var(--z-primary);
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
