@@ -256,17 +256,58 @@ function clearWedge() {
 wedgeInput.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   e.preventDefault();
+  clearTimeout(scanIdleTimer); // Enter resolves the scan — don't fire it twice
   const value = wedgeInput.value.trim();
   if (!value) return;
   handleWedgeEnter(value);
 });
 
+/* ---- Scan-burst detection (works even when DataWedge sends no Enter) ----
+   DataWedge SHOULD be configured to send an Enter suffix (Profile0 ->
+   Keystroke output -> Basic data formatting -> Send ENTER key), but the app
+   must not depend on per-device config: the scanner "types" the whole code in
+   a burst far faster than a person can. A space-free value of 6+ characters
+   that arrived at scanner speed and then went idle is treated as a completed
+   scan, exactly as if Enter had followed it. Human typing (slower keystrokes)
+   keeps the normal behaviour: live search for names, Enter to look up a
+   hand-typed barcode. */
+const SCAN_BURST_MS_PER_CHAR = 60; // wedge keystrokes arrive every ~10-30ms
+const SCAN_IDLE_MS = 180;          // quiet time that marks the scan complete
+
+let inputTimes = [];
+let scanIdleTimer = null;
+
 wedgeInput.addEventListener("input", () => {
   clearTimeout(searchTimer);
+  clearTimeout(scanIdleTimer);
   const q = wedgeInput.value.trim();
-  // All-digit input is (probably) a scan in progress — don't search mid-scan,
-  // the Enter keydown will resolve it as a barcode.
-  if (!q || /^\d+$/.test(q)) {
+  if (!q) {
+    inputTimes = [];
+    searchResults.hidden = true;
+    searchResults.innerHTML = "";
+    return;
+  }
+  const now = performance.now();
+  inputTimes.push(now);
+  if (inputTimes.length > 64) inputTimes = inputTimes.slice(-64);
+
+  // A burst: the last q.length keystrokes all landed at scanner speed. Also
+  // true when the whole code arrives as a single input event (some wedge
+  // modes inject the string in one go).
+  if (/^\S{6,}$/.test(q)) {
+    const start = inputTimes[Math.max(0, inputTimes.length - q.length)];
+    if (now - start <= q.length * SCAN_BURST_MS_PER_CHAR) {
+      scanIdleTimer = setTimeout(() => {
+        const value = wedgeInput.value.trim();
+        inputTimes = [];
+        if (value) handleWedgeEnter(value);
+      }, SCAN_IDLE_MS);
+      return; // scan in progress — no live search on top of it
+    }
+  }
+
+  // Hand-typed digits: wait for Enter rather than searching mid-number.
+  if (/^\d+$/.test(q)) {
     searchResults.hidden = true;
     searchResults.innerHTML = "";
     return;
