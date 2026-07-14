@@ -5,11 +5,11 @@ services:
     container_name: zebra-pos
     restart: unless-stopped
     ports:
-      # host 5051 -> container 5000. The original app uses 5050; 13+ other
-      # containers run on this Pi — VERIFY 5051 is actually free before the
-      # first deploy (CLAUDE.md Infrastructure), then give this app its own
-      # Caddy site block, same cert pattern as the original's :8443.
-      - "5051:5000"
+      # Bound to localhost only: Caddy (host-networked) proxies
+      # https://uk-homeserver.tailea48bb.ts.net:8444 -> 127.0.0.1:5051.
+      # Nothing on the LAN/tailnet can reach the plain-http port directly,
+      # so the padlocked :8444 address is the only way in.
+      - "127.0.0.1:5051:5000"
     volumes:
       # THE SAME volume as the original nepal-pos container — both apps read
       # and write the one live store.db/sales.db (WAL mode handles the two
