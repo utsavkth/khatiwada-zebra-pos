@@ -66,6 +66,29 @@ function refocusWedge() {
 document.addEventListener("click", refocusWedge);
 window.addEventListener("focus", refocusWedge);
 
+/* ---- Typing mode (Android soft keyboard on demand) ----
+   The wedge input carries inputmode="none" so the constant refocusing never
+   pops Android's soft keyboard — DataWedge injects key events regardless of
+   keyboard visibility. The keyboard button flips the input to typing mode
+   for a hand-typed name search; any completed action drops back to scan
+   mode. The blur/focus bounce is what makes Android re-read inputmode. */
+
+const keyboardBtn = document.getElementById("wedge-keyboard-btn");
+let typingMode = false;
+
+function setTypingMode(on) {
+  typingMode = on;
+  wedgeInput.setAttribute("inputmode", on ? "text" : "none");
+  keyboardBtn.classList.toggle("active", on);
+  wedgeInput.blur();
+  setTimeout(() => wedgeInput.focus(), 40);
+}
+
+keyboardBtn.addEventListener("click", (e) => {
+  e.stopPropagation(); // keep the document-level refocus handler out of it
+  setTypingMode(!typingMode);
+});
+
 /* ---- Cart rendering (same bill semantics as the original cashier) ---- */
 
 function renderBill() {
@@ -251,6 +274,7 @@ function clearWedge() {
   wedgeInput.value = "";
   searchResults.hidden = true;
   searchResults.innerHTML = "";
+  if (typingMode) setTypingMode(false); // done typing — back to scan mode
 }
 
 wedgeInput.addEventListener("keydown", (e) => {
