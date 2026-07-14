@@ -113,6 +113,27 @@
   cursor: pointer;
 }
 .z-quick-add-btn:active { background: var(--z-primary-soft); }
+/* Keyboard toggle: opens the soft keyboard for a hand-typed name search
+   (the wedge input itself never summons it — inputmode="none"). */
+.z-kb-btn {
+  width: var(--touch);
+  height: var(--touch);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+}
+.z-kb-btn svg { width: 26px; height: 26px; }
+.z-kb-btn.active {
+  border-color: var(--z-primary);
+  background: var(--z-primary-soft);
+  color: var(--z-primary);
+}
 
 .z-search-results { max-height: 40dvh; overflow-y: auto; }
 
