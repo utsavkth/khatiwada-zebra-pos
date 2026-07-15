@@ -144,6 +144,38 @@ do not attempt to fake or stub Fonepay's API without real credentials.
    this build. Email receipts (see the original app's backlog) may or may
    not extend to this app — not yet decided, ask before building.
 
+## Recorded backlog — offline outage tolerance (2026-07-15, not scheduled)
+
+Utsav wants the cashier to keep working through an internet outage and
+sync back up once the connection returns. This matters more here than in
+a typical POS: the server is in Sydney and the shop is in Kathmandu, so
+ANY internet problem at either end takes the POS down completely (the
+original app explicitly accepted pen-and-paper during outages — its v1
+decision 14; this app should eventually do better).
+
+Direction sketched when recorded (NOT yet a confirmed decision — confirm
+with Utsav before building): offline-first PWA on the TC53. Service
+worker caches the app shell (the existing ?v= content-hashed assets make
+invalidation clean; HTTPS via the Tailscale cert already satisfies the
+secure-context requirement); the product catalog is mirrored into
+IndexedDB while online so barcode lookups and the weight pad keep working
+offline; completed sales queue in a local outbox with client-generated
+UUIDs and flush to an idempotent batch-import endpoint when connectivity
+returns (sales are append-only, so the conflict surface is minimal).
+Known degradations while offline: no Chromebook register sync, and Quick
+Add / admin need design thought. Alternative structural fix, not chosen:
+a shop-local server in Kathmandu with the database replicated back to
+Sydney — solves outages entirely but adds hardware in Nepal and remote
+maintenance burden.
+
+ACTIVE DESIGN CONSTRAINT NOW: phase 4 (named/saved carts) must not assume
+the server is always reachable. This interacts with confirmed decision 6
+("written to the database as each item is scanned") — resolve the tension
+when phase 4 starts, e.g. local-first persistence (IndexedDB) that syncs
+to the server whenever reachable still satisfies decision 6's intent
+(survive restart/crash). Do not build carts in a server-only shape that
+the future offline mode would have to re-architect.
+
 ## Database schema
 
 Identical to the original app (Nepal Grocery POS) — see that project's
