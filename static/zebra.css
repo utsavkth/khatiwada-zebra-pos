@@ -23,7 +23,16 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 10px;
+  /* viewport-fit=cover (zebra.html) lets the page paint under the status bar
+     and gesture-nav bar instead of leaving raw black system-UI gaps; these
+     safe-area insets then keep real content (the footer buttons, especially)
+     clear of that same system UI instead of being clipped by it. env()
+     evaluates to 0 without viewport-fit=cover, so max() just keeps the
+     original 10px on ordinary browsers/desktop preview. */
+  padding: max(10px, env(safe-area-inset-top))
+           max(10px, env(safe-area-inset-right))
+           max(10px, env(safe-area-inset-bottom))
+           max(10px, env(safe-area-inset-left));
   height: 100vh;
   height: 100dvh;
   max-width: 560px;
