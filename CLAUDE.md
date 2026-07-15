@@ -203,6 +203,33 @@ app explicitly accepted pen-and-paper during outages — its v1 decision
    Sydney only so far, via DevTools offline mode); a stale/never-synced
    catalog mirror (e.g. first-ever launch already offline) has no data to
    fall back to — inherent, not a bug.
+9. On-device fixes after real TC53 testing (2026-07-15, same day as the
+   build above — three issues Utsav hit testing an actual outage):
+   - **Precache is per-URL, not `cache.addAll`** (which is atomic — one
+     slow/flaky asset fails the WHOLE install and caches nothing). The
+     Fonepay QR jpg, fetched over Tailscale to Sydney on first install,
+     was exactly that flaky asset — the app had no offline shell at all,
+     not just a missing QR. `Promise.allSettled` over individual
+     `cache.add()` calls now means one miss doesn't sink the rest; the QR
+     also gets cached opportunistically the first time the payment step
+     is opened online (`cacheFirst()`), a second chance regardless.
+   - **Network fetches in the service worker are timeout-wrapped**
+     (`fetchWithTimeout`, 4s). A dead-but-connected network (Tailscale/Pi
+     down while WiFi stays up — the realistic shape of this app's actual
+     outage, vs. a laptop's instant "offline" toggle) let a bare `fetch()`
+     hang for minutes before the OS gave up, reported on-device as "site
+     cannot be reached" for 2-3 minutes. The cached shell now serves
+     within seconds of a real request actually failing to get an answer.
+   - **Back-button no longer pops past the sentinel when nothing is
+     open.** It used to (`history.back()` a second time, meant to let a
+     real "nothing to close" back press exit the app) — but Admin links
+     back to the cashier with a normal `<a href>` push, so a staff member
+     who'd visited Admin earlier in the session had THAT history sitting
+     right behind the cashier's base entry, and a plain back press on the
+     till surfaced the admin login screen. Fixed by making back-with-
+     nothing-open a no-op (re-arm and stay): accidentally exiting a till
+     mid-shift is worse than back doing nothing, and staff have the
+     device's home button/gesture for that anyway.
 
 ## Database schema
 
