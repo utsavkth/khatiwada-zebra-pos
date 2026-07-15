@@ -1135,15 +1135,25 @@ function updateHeaderClock() {
 updateHeaderClock();
 setInterval(updateHeaderClock, 15000);
 
-/* ---- Android back button: close layers instead of leaving the page ----
+/* ---- Android back button: close layers, never leave the till ----
    On the TC53 (capacitive key or gesture) "back" is a history pop. With only
    one history entry that pop leaves the app — a trap when all the user wanted
    was to dismiss a modal. Pattern: keep exactly ONE sentinel entry pushed
    above the real entry at all times. A back press pops the sentinel; the
    popstate handler then closes the topmost open layer (modal → payment step →
-   active search) and re-arms the sentinel. Only when nothing is open does
-   back actually leave (we pop the real entry too). No history calls happen
-   during normal modal open/close, so there are no async popstate races. */
+   active search) and re-arms the sentinel.
+
+   When NOTHING is open, back is a no-op (re-arm and stay) rather than
+   popping the real entry to "actually leave" — a real device's history
+   isn't scoped to just this page load. Admin has a normal <a href> link
+   back to the cashier (a fresh push, on top of whatever admin/login pages
+   preceded it), so a staff member who visited Admin earlier in the same
+   session has THAT history sitting right behind the cashier's base entry.
+   Popping past it used to surface the admin login screen on a plain back
+   press — surprising and wrong for a till. Accidentally exiting the app
+   is worse than back doing nothing here; staff use the device's home
+   button/gesture to actually leave. No history calls happen during normal
+   modal open/close, so there are no async popstate races. */
 
 // Topmost first: the duplicate warning stacks ON TOP of Quick Add, so it must
 // be dismissed first. Each entry reuses the modal's own cancel/back button so
@@ -1192,13 +1202,8 @@ window.addEventListener("pageshow", (e) => {
 window.addEventListener("popstate", () => {
   // Forward navigation back onto the sentinel — nothing to do.
   if (history.state && history.state.zebra === "sentinel") return;
-  if (closeTopLayer()) {
-    armBackSentinel();
-  } else {
-    // Nothing open: a second pop leaves for real (previous page, or no-op if
-    // this was the first entry — the till simply stays put, which is fine).
-    history.back();
-  }
+  closeTopLayer(); // no-op if nothing was open
+  armBackSentinel(); // always re-arm — back never leaves the till (see above)
 });
 
 /* ---- Init ---- */

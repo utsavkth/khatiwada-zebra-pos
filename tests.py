@@ -152,6 +152,15 @@ def run():
     zebra_js = client.get("/static/zebra.js").get_data(as_text=True)
     check("back-button sentinel is wired (popstate closes layers)",
           "popstate" in zebra_js and "armBackSentinel" in zebra_js and "closeTopLayer" in zebra_js)
+    check("back with nothing open never pops past the sentinel (regression: used to "
+          "surface stale Admin history — Admin links back to / with a normal <a href>, "
+          "so a staff member who visited Admin earlier landed back on admin/login on a "
+          "plain back press)", "history.back()" not in zebra_js)
+    with open(os.path.join(os.path.dirname(__file__), "templates", "admin_base.html"), encoding="utf-8") as f:
+        admin_base = f.read()
+    check("Admin links back to the cashier with a normal push (not history-replacing) — "
+          "relies on back-with-nothing-open being a no-op, not on how this link navigates",
+          "url_for('cashier')" in admin_base)
 
     # ---------------------------------------------------------------
     section("Offline: service worker + IndexedDB mirror wiring")
@@ -165,6 +174,14 @@ def run():
     check("/sw.js is not browser-cached across deploys", r.headers.get("Cache-Control") == "no-cache")
     check("service worker never intercepts /api/* (offline fallback is app-level, not per-URL)",
           "/api/" in sw and "startsWith(\"/api/\")" in sw)
+    check("precache is resilient per-URL, not all-or-nothing (regression: cache.addAll is "
+          "atomic — one slow/flaky asset, e.g. the Fonepay QR jpg over Tailscale on first "
+          "install, used to fail the WHOLE install and cache nothing at all)",
+          "cache.addAll(PRECACHE)" not in sw and "allSettled" in sw)
+    check("network attempts are timeout-wrapped (regression: a dead-but-connected network, "
+          "e.g. Tailscale/Pi down while WiFi stays up, made a bare fetch() hang for minutes "
+          "on-device before falling back to cache — 'site cannot be reached' for 2-3 min)",
+          "fetchWithTimeout" in sw and "FETCH_TIMEOUT_MS" in sw)
     offline_js = client.get("/static/offline.js").get_data(as_text=True)
     check("offline.js exposes the catalog + outbox stores",
           "ZebraOffline" in offline_js and "catalog" in offline_js and "outbox" in offline_js)

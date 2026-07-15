@@ -3,8 +3,13 @@
    a Flask route so its scope covers the whole app.
 
    Strategy:
-   - Navigations ("/"): network-first so a deploy is picked up immediately,
-     falling back to the last cached copy when offline.
+   - Navigations ("/"): network-first, with a short timeout so a genuinely
+     dead connection falls back to the cached shell in seconds rather than
+     however long the OS/browser takes to give up on a real TCP/DNS attempt
+     (observed on-device: several minutes, not the near-instant failure a
+     laptop dev-tools "offline" toggle gives — the difference between "no
+     network interface" and "network up but nothing answers", which is the
+     realistic shape of a Tailscale/Pi outage).
    - /static/*: cache-first — every static URL carries a ?v= content hash
      (see app.py cache-busting), so a cached response is immutable; new
      deploys produce new URLs and old entries are pruned on activate.
@@ -16,10 +21,19 @@
 
    Data (catalog mirror, sales outbox) lives in IndexedDB, not here. */
 
-const CACHE = "zebra-shell-v1";
+const CACHE = "zebra-shell-v2";
+const FETCH_TIMEOUT_MS = 4000;
 
 /* The app shell + assets referenced without a ?v= hash from JS/manifest.
-   Hash-versioned asset URLs are cached at runtime on first use. */
+   Hash-versioned asset URLs are cached at runtime on first use.
+
+   Cached individually (not cache.addAll, which is all-or-nothing: one slow
+   or flaky fetch — over Tailscale to Sydney, on first install, the QR jpg
+   is the biggest single file here — used to fail the ENTIRE install, so
+   NOTHING got cached and the app had no offline shell at all). A precache
+   miss here is not fatal: the fonepay QR and icons also get cached
+   opportunistically by cacheFirst() the first time they're actually
+   fetched (e.g. opening the payment step once while online). */
 const PRECACHE = [
   "/",
   "/static/fonepay-static-qr.jpg",
@@ -29,12 +43,21 @@ const PRECACHE = [
   "/static/favicon.svg",
 ];
 
+function fetchWithTimeout(request, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("sw: fetch timed out")), ms);
+    fetch(request).then(
+      (res) => { clearTimeout(timer); resolve(res); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE).then((cache) =>
+      Promise.allSettled(PRECACHE.map((url) => cache.add(url))).then(() => self.skipWaiting())
+    )
   );
 });
 
@@ -49,7 +72,7 @@ self.addEventListener("activate", (event) => {
 
 function networkFirst(request, cacheKey) {
   return caches.open(CACHE).then((cache) =>
-    fetch(request)
+    fetchWithTimeout(request, FETCH_TIMEOUT_MS)
       .then((response) => {
         if (response.ok) cache.put(cacheKey || request, response.clone());
         return response;
@@ -63,7 +86,7 @@ function cacheFirst(request) {
     cache.match(request).then(
       (hit) =>
         hit ||
-        fetch(request).then((response) => {
+        fetchWithTimeout(request, FETCH_TIMEOUT_MS).then((response) => {
           if (response.ok) cache.put(request, response.clone());
           return response;
         })
