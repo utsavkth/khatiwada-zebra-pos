@@ -8,6 +8,111 @@
 const bill = []; // { product_name, name_ne, quantity, unit_price, original_price, is_weighed, unit }
 let cartName = ""; // optional customer label, set when a cart is saved/resumed
 
+/* ---- Offline: catalog mirror + sale outbox --------------------------------
+   The server is in Sydney and the shop is in Kathmandu, so ANY internet
+   problem at either end normally kills the till outright. ZebraOffline
+   (offline.js, loaded before this file) holds an IndexedDB mirror of the
+   catalog and an outbox of sales that couldn't reach the server; the
+   functions below keep both in sync and are the fallback path whenever a
+   fetch fails. Read-only lookups (barcode/name/quick-taps) fall back to the
+   mirror; Quick Add (creating a brand-new product) does NOT — that needs the
+   server's live duplicate-check and group list, so it stays online-only
+   (recorded as a known offline degradation in CLAUDE.md). */
+
+let catalogMirror = null; // last-known { products, groups, pinned, all_groups }
+
+function kathmanduNow() {
+  // Computed on-device (Intl, no server round-trip) so a sale queued while
+  // offline keeps the moment it actually happened, not whenever the
+  // connection came back. Same YYYY-MM-DD / HH:MM:SS shape as db.py.
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kathmandu", hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(new Date());
+  const p = Object.fromEntries(parts.map((x) => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}:${p.second}` };
+}
+
+function newClientUuid() {
+  return crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function refreshCatalogMirror() {
+  try {
+    const res = await fetch("/api/catalog");
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    catalogMirror = data;
+    ZebraOffline.saveCatalog(data).catch(() => {});
+    return data;
+  } catch {
+    if (!catalogMirror) {
+      const cached = await ZebraOffline.getCatalog().catch(() => null);
+      if (cached) catalogMirror = cached.payload;
+    }
+    return catalogMirror;
+  }
+}
+
+function offlineBarcodeLookup(barcode) {
+  return (catalogMirror?.products || []).find((p) => p.barcode === barcode) || null;
+}
+
+function offlineNameSearch(q) {
+  const needle = q.toLowerCase();
+  return (catalogMirror?.products || [])
+    .filter((p) => p.name.toLowerCase().includes(needle) || (p.barcode || "").includes(q))
+    .slice(0, 20);
+}
+
+function updateOfflineBadge(pendingCount) {
+  const badge = document.getElementById("offline-status");
+  if (!navigator.onLine) {
+    badge.hidden = false;
+    badge.className = "z-offline-badge is-offline";
+    badge.textContent = t("offlineBadge");
+  } else if (pendingCount > 0) {
+    badge.hidden = false;
+    badge.className = "z-offline-badge is-pending";
+    badge.textContent = pendingCount === 1 ? t("pendingSyncOne") : pendingCount + t("pendingSyncMany");
+  } else {
+    badge.hidden = true;
+  }
+}
+
+async function refreshOfflineBadge() {
+  const pending = await ZebraOffline.countQueuedSales().catch(() => 0);
+  updateOfflineBadge(pending);
+}
+
+async function flushSalesOutbox() {
+  if (!navigator.onLine) return;
+  const queued = await ZebraOffline.listQueuedSales().catch(() => []);
+  if (queued.length === 0) return;
+  try {
+    const res = await fetch("/api/sales/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sales: queued }),
+    });
+    if (!res.ok) return; // network came back but server errored — try again later
+    const { results } = await res.json();
+    const settled = results.filter((r) => r.status === "imported" || r.status === "duplicate")
+      .map((r) => r.client_uuid);
+    if (settled.length) await ZebraOffline.removeQueuedSales(settled);
+  } catch {
+    // still offline in practice (e.g. captive portal) — leave the outbox queued
+  } finally {
+    refreshOfflineBadge();
+  }
+}
+
+window.addEventListener("online", () => { refreshOfflineBadge(); flushSalesOutbox(); });
+window.addEventListener("offline", () => refreshOfflineBadge());
+
 function formatRs(n) {
   return "Rs. " + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -250,7 +355,17 @@ async function handleWedgeEnter(value) {
   try {
     res = await fetch("/api/products/barcode/" + encodeURIComponent(value));
   } catch {
-    showToast(t("lookupFailed"));
+    // Offline: fall back to the mirrored catalog. A genuine miss can't open
+    // Quick Add here — creating a product needs the server's live
+    // duplicate-check and group list — so it's reported, not silently opened.
+    const offlineProduct = offlineBarcodeLookup(value);
+    if (offlineProduct) {
+      clearWedge();
+      addLookedUpProduct(offlineProduct);
+    } else {
+      clearWedge();
+      showToast(t("offlineNotFoundNoAdd"), 2600);
+    }
     return;
   }
   if (res.ok) {
@@ -342,24 +457,29 @@ wedgeInput.addEventListener("input", () => {
 async function runNameSearch(q) {
   try {
     const res = await fetch("/api/products/search?q=" + encodeURIComponent(q));
+    if (!res.ok) throw new Error();
     const products = await res.json();
     renderSearchResults(products, q);
   } catch {
-    showToast(t("searchFailed"));
+    // Offline: search the mirrored catalog instead. Unlike the online path, a
+    // miss doesn't offer "add it now" — Quick Add needs the server.
+    renderSearchResults(offlineNameSearch(q), q, true);
   }
 }
 
-function renderSearchResults(products, q) {
+function renderSearchResults(products, q, offline = false) {
   searchResults.innerHTML = "";
   searchResults.hidden = false;
   if (products.length === 0) {
     const li = document.createElement("li");
-    li.className = "no-results add-not-found";
-    li.textContent = t("noResults");
-    li.addEventListener("click", () => {
-      clearWedge();
-      openQuickAdd(null, q);
-    });
+    li.className = "no-results" + (offline ? "" : " add-not-found");
+    li.textContent = offline ? t("offlineNotFoundNoAdd") : t("noResults");
+    if (!offline) {
+      li.addEventListener("click", () => {
+        clearWedge();
+        openQuickAdd(null, q);
+      });
+    }
     searchResults.appendChild(li);
     return;
   }
@@ -432,38 +552,48 @@ function productTapTile(p, colorClass) {
   return btn;
 }
 
+function renderQuickTaps(data) {
+  populateQuickAddGroups(data.all_groups || []);
+  const container = document.getElementById("quick-taps");
+  container.innerHTML = "";
+  (data.groups || []).forEach((group) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tap " + (group.is_weighed ? "tap-weighed" : "tap-lpg");
+    const media = document.createElement("span");
+    const icon = TAP_ICONS[group.name];
+    if (icon) {
+      media.className = "tap-media icon";
+      media.innerHTML = icon;
+    } else {
+      media.className = "tap-media letter";
+      media.textContent = (group.name || "?").trim().charAt(0).toUpperCase();
+    }
+    const name = document.createElement("span");
+    name.className = "tap-name";
+    name.textContent = productDisplayName(group.name, group.name_ne);
+    btn.append(media, name);
+    btn.addEventListener("click", () => openVarietyList(group));
+    container.appendChild(btn);
+  });
+  (data.pinned || []).forEach((p) => {
+    container.appendChild(productTapTile(p, "tap-pinned"));
+  });
+}
+
 async function loadQuickTaps() {
   try {
     const res = await fetch("/api/products/quick-taps");
-    const data = await res.json();
-    populateQuickAddGroups(data.all_groups || []);
-    const container = document.getElementById("quick-taps");
-    container.innerHTML = "";
-    data.groups.forEach((group) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "tap " + (group.is_weighed ? "tap-weighed" : "tap-lpg");
-      const media = document.createElement("span");
-      const icon = TAP_ICONS[group.name];
-      if (icon) {
-        media.className = "tap-media icon";
-        media.innerHTML = icon;
-      } else {
-        media.className = "tap-media letter";
-        media.textContent = (group.name || "?").trim().charAt(0).toUpperCase();
-      }
-      const name = document.createElement("span");
-      name.className = "tap-name";
-      name.textContent = productDisplayName(group.name, group.name_ne);
-      btn.append(media, name);
-      btn.addEventListener("click", () => openVarietyList(group));
-      container.appendChild(btn);
-    });
-    (data.pinned || []).forEach((p) => {
-      container.appendChild(productTapTile(p, "tap-pinned"));
-    });
+    if (!res.ok) throw new Error();
+    renderQuickTaps(await res.json());
   } catch {
-    showToast(t("couldNotLoadQuick"));
+    // Offline: the catalog mirror carries the same groups/pinned/all_groups
+    // shape (see /api/catalog), so the quick-tap buttons still work.
+    if (catalogMirror) {
+      renderQuickTaps(catalogMirror);
+    } else {
+      showToast(t("couldNotLoadQuick"));
+    }
   }
 }
 
@@ -953,27 +1083,36 @@ async function finalizeSale() {
     quantity: l.quantity,
     unit_price: l.unit_price,
   }));
+  const total = billTotal();
+  const { date, time } = kathmanduNow();
+  // Every sale (online or offline) is a batch-of-one to /api/sales/sync with a
+  // client-generated UUID: the same idempotent path either way means a lost
+  // response or a flaky reconnect can never double-record the sale, and a
+  // network failure just means it queues in the outbox instead of blocking
+  // the till — staff need to keep serving customers through an outage.
+  const sale = { client_uuid: newClientUuid(), date, time, items };
   const okBtn = document.getElementById("payment-received");
   okBtn.disabled = true;
+  let savedOnline = false;
   try {
-    const res = await fetch("/api/sales", {
+    const res = await fetch("/api/sales/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ sales: [sale] }),
     });
     if (!res.ok) throw new Error();
-    const sale = await res.json();
-    bill.length = 0;
-    cartName = "";
-    renderBill();
-    paymentModal.hidden = true;
-    showToast(t("saleSaved") + formatRs(sale.total), 2500);
-    refocusWedge();
+    savedOnline = true;
   } catch {
-    showToast(t("couldNotSaveSale"));
-  } finally {
-    okBtn.disabled = false;
+    await ZebraOffline.queueSale(sale).catch(() => {});
+    refreshOfflineBadge();
   }
+  bill.length = 0;
+  cartName = "";
+  renderBill();
+  paymentModal.hidden = true;
+  showToast((savedOnline ? t("saleSaved") : t("saleSavedOffline")) + formatRs(total), 2500);
+  refocusWedge();
+  okBtn.disabled = false;
 }
 
 /* ---- Language toggle (decision 15) ---- */
@@ -1064,7 +1203,20 @@ window.addEventListener("popstate", () => {
 
 /* ---- Init ---- */
 
-loadQuickTaps();
+refreshCatalogMirror().then(() => {
+  loadQuickTaps();
+  flushSalesOutbox();
+});
 renderParkedCarts();
 renderBill();
+refreshOfflineBadge();
 wedgeInput.focus();
+
+// navigator.onLine and the "online" event mostly reflect "network interface
+// up", not "server actually reachable" — a periodic catalog refresh + outbox
+// flush is the real safety net; the online/offline listeners above just make
+// the common Wi-Fi-drops-then-returns case feel instant.
+setInterval(() => {
+  refreshCatalogMirror();
+  flushSalesOutbox();
+}, 2 * 60 * 1000);

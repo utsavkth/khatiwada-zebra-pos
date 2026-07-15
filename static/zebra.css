@@ -72,6 +72,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.z-offline-badge {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.z-offline-badge.is-offline { background: #7c2d12; color: #fed7aa; }
+.z-offline-badge.is-pending { background: #78350f; color: #fde68a; }
 .z-header-actions { display: flex; align-items: center; gap: 6px; }
 /* Keep the one-handed hit target at 44px+ even though the pills are visually
    compact (handoff: bump from the mockup's 36px for the real build). */

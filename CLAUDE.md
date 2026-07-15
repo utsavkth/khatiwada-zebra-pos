@@ -144,37 +144,65 @@ do not attempt to fake or stub Fonepay's API without real credentials.
    this build. Email receipts (see the original app's backlog) may or may
    not extend to this app — not yet decided, ask before building.
 
-## Recorded backlog — offline outage tolerance (2026-07-15, not scheduled)
+## Offline outage tolerance (decision, 2026-07-15)
 
-Utsav wants the cashier to keep working through an internet outage and
-sync back up once the connection returns. This matters more here than in
-a typical POS: the server is in Sydney and the shop is in Kathmandu, so
-ANY internet problem at either end takes the POS down completely (the
-original app explicitly accepted pen-and-paper during outages — its v1
-decision 14; this app should eventually do better).
+The server is in Sydney and the shop is in Kathmandu, so ANY internet
+problem at either end used to take the POS down completely (the original
+app explicitly accepted pen-and-paper during outages — its v1 decision
+14). This app does better: offline-first PWA on the TC53, browser-only
+(no native code, decision 11 unchanged).
 
-Direction sketched when recorded (NOT yet a confirmed decision — confirm
-with Utsav before building): offline-first PWA on the TC53. Service
-worker caches the app shell (the existing ?v= content-hashed assets make
-invalidation clean; HTTPS via the Tailscale cert already satisfies the
-secure-context requirement); the product catalog is mirrored into
-IndexedDB while online so barcode lookups and the weight pad keep working
-offline; completed sales queue in a local outbox with client-generated
-UUIDs and flush to an idempotent batch-import endpoint when connectivity
-returns (sales are append-only, so the conflict surface is minimal).
-Known degradations while offline: no Chromebook register sync, and Quick
-Add / admin need design thought. Alternative structural fix, not chosen:
-a shop-local server in Kathmandu with the database replicated back to
-Sydney — solves outages entirely but adds hardware in Nepal and remote
-maintenance burden.
-
-ACTIVE DESIGN CONSTRAINT NOW: phase 4 (named/saved carts) must not assume
-the server is always reachable. This interacts with confirmed decision 6
-("written to the database as each item is scanned") — resolve the tension
-when phase 4 starts, e.g. local-first persistence (IndexedDB) that syncs
-to the server whenever reachable still satisfies decision 6's intent
-(survive restart/crash). Do not build carts in a server-only shape that
-the future offline mode would have to re-architect.
+1. Service worker (`static/sw.js`, served at `/sw.js` so its scope covers
+   the whole app) caches the app shell: network-first-with-cache-fallback
+   for the cashier page itself, cache-first for `/static/*` and `/media/*`
+   (both are immutable per-URL — the existing `?v=` content hash and the
+   per-save unique image filename mean a cached response never goes
+   stale). `/api/*` is never cached by the service worker — API data
+   offline-fallback is handled in app code against the IndexedDB mirror
+   below, kept as one consistent snapshot instead of per-URL crumbs.
+2. Product catalog mirror: `GET /api/catalog` returns the full active
+   catalog + quick-tap structure in one payload. `zebra.js` syncs this
+   into IndexedDB (`static/offline.js`) on load and every 2 minutes while
+   online, and falls back to the mirror for barcode lookup, name search,
+   and the quick-tap buttons whenever the live fetch fails.
+3. Sales outbox: every confirmed sale posts to `POST /api/sales/sync`
+   (batch import) with a client-generated UUID and a Kathmandu
+   date/time computed on-device (`kathmanduNow()` — a sale keeps the
+   moment it actually happened, not whenever the connection returns). A
+   network failure queues the sale in IndexedDB instead of blocking
+   checkout; `flushSalesOutbox()` retries on the `online` event and the
+   2-minute interval. The server dedupes by `client_uuid` (`zebra_sale_imports`
+   table in sales.db, additive — the shared `sales`/`sale_items` tables are
+   unchanged) so a lost response or retried request can never double-record
+   a sale. `POST /api/sales` (single sale, no UUID) still exists unchanged
+   for direct/test use, but the cashier UI no longer calls it.
+4. Known offline degradations, by design — not gaps to silently patch:
+   Quick Add (creating a brand-new product) stays online-only, because it
+   needs the server's live duplicate-check and group list; a miss while
+   offline is reported (`offlineNotFoundNoAdd`) rather than opening the
+   form. The admin portal is online-only. The Chromebook register view
+   (phase 5, not yet built) will need the server as its sync relay, so it
+   simply won't update during an outage.
+5. Header shows a badge (`#offline-status`): "Offline — using saved
+   catalog" while `navigator.onLine` is false, or "N sales waiting to
+   sync" while sales are queued but the connection is back — so staff
+   always know which mode they're in, never a silent failure.
+6. Alternative considered, not chosen: a shop-local server in Kathmandu
+   with the database replicated back to Sydney — solves outages
+   structurally but adds hardware in Nepal and remote maintenance burden.
+   Could revisit later; this offline-first work isn't wasted either way
+   (it also covers "Pi down", not just "shop internet down").
+7. Interaction with phase 4 (named/saved carts, not yet built): carts
+   must be designed local-first (IndexedDB, synced to the server when
+   reachable) rather than server-only, so the future cart phase doesn't
+   have to be re-architected around this. Confirmed decision 6 ("written
+   to the database as each item is scanned") is satisfied by local-first
+   persistence + sync — the intent (survive restart/crash) doesn't
+   require the *database* in question to be the server's.
+8. Not yet done: verified on the real TC53 (built and browser-tested in
+   Sydney only so far, via DevTools offline mode); a stale/never-synced
+   catalog mirror (e.g. first-ever launch already offline) has no data to
+   fall back to — inherent, not a bug.
 
 ## Database schema
 
@@ -217,6 +245,10 @@ cert/domain details).
 - `static/manifest.json`, `static/icon-192.png`, `static/icon-512.png` — web
   app manifest + PNG icons so the cashier can be pinned to the TC53 home
   screen as a standalone app (still browser-based — decision 11 unchanged)
+- `static/sw.js` (served at `/sw.js`), `static/offline.js` — offline outage
+  tolerance: service worker app-shell cache + IndexedDB catalog mirror/sales
+  outbox, registered from `zebra.html`; see the "Offline outage tolerance"
+  decision above for the full design
 - `templates/admin_*.html`, `static/admin.css`, `static/admin-products.js` —
   the admin portal (copied, unchanged)
 - `static/fonepay-static-qr.jpg` — the shop's REAL static Fonepay QR
@@ -249,13 +281,17 @@ cert/domain details).
    scans by typing + Enter into the focused field, exactly matching what
    DataWedge will do) (2026-07-13 — full suite passing + simulated-scan
    browser verification at handheld viewport)
-7. Test on the real Zebra TC53 once purchased and configured (DataWedge
+7. ✅ Offline outage tolerance: service worker app shell + IndexedDB
+   catalog mirror + sales outbox (2026-07-15 — see the decision above;
+   built and browser-tested in Sydney with DevTools offline mode, not yet
+   verified on the real TC53)
+8. Test on the real Zebra TC53 once purchased and configured (DataWedge
    profile setup is a device-side task, not app code)
-8. Once Fonepay API access is confirmed: build QR generation + webhook
+9. Once Fonepay API access is confirmed: build QR generation + webhook
    payment confirmation (the static-QR payment step and its swap point are
    already in place — only the dynamic half is blocked)
-9. Full end-to-end testing in Sydney before shipping the Zebra to Nepal
-10. Deploy to the Pi, test over Tailscale, decide when/how to cut over
+10. Full end-to-end testing in Sydney before shipping the Zebra to Nepal
+11. Deploy to the Pi, test over Tailscale, decide when/how to cut over
     from the original app
 
 Always check this file before making architectural choices. If a request
