@@ -33,7 +33,20 @@
            max(10px, env(safe-area-inset-right))
            max(10px, env(safe-area-inset-bottom))
            max(10px, env(safe-area-inset-left));
+  /* Three-layer height fallback, weakest to strongest support:
+     100vh (oldest, but on mobile Chrome this is the LARGEST possible size —
+     as if the address bar were already hidden, which is wrong on first paint
+     and is exactly what clipped the footer buttons inside a normal Chrome
+     tab: the address bar is still on screen, dvh should shrink around it but
+     real-world Android Chrome can lag/mis-time that on first paint before any
+     scroll) -> 100svh (small viewport height, the GUARANTEED-safe floor that
+     always assumes the address bar is showing — never clips, worst case a
+     few px of unused space once the bar auto-hides) -> 100dvh (best case:
+     tracks the address bar live once Chrome has settled). Installed/
+     standalone launches have no address bar to begin with, so this only
+     changes behaviour inside a normal Chrome tab. */
   height: 100vh;
+  height: 100svh;
   height: 100dvh;
   max-width: 560px;
   margin: 0 auto;
