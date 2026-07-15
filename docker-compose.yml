@@ -4,6 +4,13 @@ services:
     image: zebra-pos
     container_name: zebra-pos
     restart: unless-stopped
+    labels:
+      # This image is built locally from source (no registry push), so
+      # Watchtower can never find a newer version to pull — it was just
+      # polling and reporting "not updated" every day. Deploys are
+      # deliberate: git pull + docker compose up -d --build via Termius,
+      # not automatic.
+      - "com.centurylinklabs.watchtower.enable=false"
     ports:
       # Bound to localhost only: Caddy (host-networked) proxies
       # https://uk-homeserver.tailea48bb.ts.net:8444 -> 127.0.0.1:5051.
