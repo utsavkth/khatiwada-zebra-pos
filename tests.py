@@ -131,6 +131,29 @@ def run():
         check(f"{label} runs in WAL mode (shared with the original app)", mode == "wal", mode)
 
     # ---------------------------------------------------------------
+    section("PWA manifest + icons + back-button sentinel")
+    check("manifest + theme-color linked from the cashier page",
+          "manifest.json" in page and 'name="theme-color"' in page)
+    r = client.get("/static/manifest.json")
+    manifest = r.get_json(force=True) if r.status_code == 200 else None
+    check("manifest.json is served and valid JSON", manifest is not None)
+    if manifest:
+        check("manifest launches the cashier standalone at /",
+              manifest.get("start_url") == "/" and manifest.get("display") == "standalone")
+        sizes = sorted(i.get("sizes") for i in manifest.get("icons", []))
+        check("manifest declares 192 + 512 PNG icons", sizes == ["192x192", "512x512"])
+    for px in (192, 512):
+        r = client.get(f"/static/icon-{px}.png")
+        ok = r.status_code == 200
+        if ok:
+            icon = Image.open(io.BytesIO(r.get_data()))
+            ok = icon.format == "PNG" and icon.size == (px, px)
+        check(f"icon-{px}.png exists and is a real {px}x{px} PNG", ok)
+    zebra_js = client.get("/static/zebra.js").get_data(as_text=True)
+    check("back-button sentinel is wired (popstate closes layers)",
+          "popstate" in zebra_js and "armBackSentinel" in zebra_js and "closeTopLayer" in zebra_js)
+
+    # ---------------------------------------------------------------
     section("Cashier — search by name and barcode")
     r = client.get("/api/products/search?q=cola")
     check("search by name (case-insensitive)", any(p["name"] == "Test Cola" for p in r.get_json()))
