@@ -1135,7 +1135,7 @@ function updateHeaderClock() {
 updateHeaderClock();
 setInterval(updateHeaderClock, 15000);
 
-/* ---- Android back button: close layers, never leave the till ----
+/* ---- Android back button: close layers, confirm before leaving the till --
    On the TC53 (capacitive key or gesture) "back" is a history pop. With only
    one history entry that pop leaves the app — a trap when all the user wanted
    was to dismiss a modal. Pattern: keep exactly ONE sentinel entry pushed
@@ -1143,21 +1143,30 @@ setInterval(updateHeaderClock, 15000);
    popstate handler then closes the topmost open layer (modal → payment step →
    active search) and re-arms the sentinel.
 
-   When NOTHING is open, back is a no-op (re-arm and stay) rather than
-   popping the real entry to "actually leave" — a real device's history
-   isn't scoped to just this page load. Admin has a normal <a href> link
-   back to the cashier (a fresh push, on top of whatever admin/login pages
-   preceded it), so a staff member who visited Admin earlier in the same
-   session has THAT history sitting right behind the cashier's base entry.
-   Popping past it used to surface the admin login screen on a plain back
-   press — surprising and wrong for a till. Accidentally exiting the app
-   is worse than back doing nothing here; staff use the device's home
-   button/gesture to actually leave. No history calls happen during normal
+   When NOTHING is open, back opens an explicit exit-confirm prompt (bold,
+   both languages, see #exit-confirm-modal) instead of silently leaving OR
+   silently doing nothing — either extreme is confusing on a shared till a
+   non-technical family member is using. A silent no-op used to be the fix
+   here, but it's indistinguishable from "the back button doesn't work" to
+   someone actually trying to leave, and there was never a fully reliable
+   way to prove from Sydney that no code path could still pop past the
+   sentinel on a real device — Admin's normal <a href> link back to the
+   cashier means a staff member who visited Admin earlier in the session has
+   real history sitting behind the base entry, and Android's own back stack
+   for an installed/standalone PWA isn't entirely a JS-side concern once
+   history genuinely runs out. An explicit prompt is the honest answer
+   either way: staff always get a clear choice, never a surprise. Tapping
+   "Close app" can't force a single-tap exit — there's no reliable web API
+   for that on an installed PWA — so it best-effort pops two entries AND
+   arms a short window where the NEXT physical back press is let through
+   for real, with a toast saying so. No history calls happen during normal
    modal open/close, so there are no async popstate races. */
 
 // Topmost first: the duplicate warning stacks ON TOP of Quick Add, so it must
 // be dismissed first. Each entry reuses the modal's own cancel/back button so
 // back behaves exactly like tapping Cancel (state reset + wedge refocus).
+// exit-confirm-modal is last since it can never stack with the others — it
+// only opens when nothing else is — but back on IT must also just cancel.
 const BACK_LAYERS = [
   { modal: "duplicate-modal", cancel: "dup-cancel" },
   { modal: "payment-modal", cancel: "payment-back" },
@@ -1166,6 +1175,7 @@ const BACK_LAYERS = [
   { modal: "weight-modal", cancel: "weight-cancel" },
   { modal: "variety-modal", cancel: "variety-cancel" },
   { modal: "price-modal", cancel: "price-cancel" },
+  { modal: "exit-confirm-modal", cancel: "exit-confirm-cancel" },
 ];
 
 function closeTopLayer() {
@@ -1182,6 +1192,32 @@ function closeTopLayer() {
   }
   return false;
 }
+
+const exitConfirmModal = document.getElementById("exit-confirm-modal");
+
+document.getElementById("exit-confirm-cancel").addEventListener("click", () => {
+  exitConfirmModal.hidden = true;
+  refocusWedge();
+});
+
+let allowExit = false;
+let allowExitTimer = null;
+
+document.getElementById("exit-confirm-close").addEventListener("click", () => {
+  exitConfirmModal.hidden = true;
+  allowExit = true;
+  clearTimeout(allowExitTimer);
+  allowExitTimer = setTimeout(() => { allowExit = false; }, 5000);
+  // Bilingual, always both languages — same reasoning as the modal itself.
+  showToast("Press Back once more to close / बन्द गर्न फेरि Back थिच्नुहोस्", 3000);
+  // Best-effort immediate close: pops the sentinel AND the base entry in one
+  // step. If nothing real is behind base (the common case, a fresh launch),
+  // Android finishes the activity here — done in one tap. If something IS
+  // behind it (e.g. stale Admin history), this only partially pops and the
+  // allowExit window + toast above cover it: one more physical back press
+  // within 5s will be let through instead of re-prompting.
+  history.go(-2);
+});
 
 function armBackSentinel() {
   history.pushState({ zebra: "sentinel" }, "");
@@ -1202,8 +1238,23 @@ window.addEventListener("pageshow", (e) => {
 window.addEventListener("popstate", () => {
   // Forward navigation back onto the sentinel — nothing to do.
   if (history.state && history.state.zebra === "sentinel") return;
-  closeTopLayer(); // no-op if nothing was open
-  armBackSentinel(); // always re-arm — back never leaves the till (see above)
+  if (allowExit) {
+    // The user already confirmed via "Close app" — let this pop stand for
+    // real instead of re-arming or re-prompting. One-shot: consumed here.
+    allowExit = false;
+    clearTimeout(allowExitTimer);
+    return;
+  }
+  if (closeTopLayer()) {
+    // Closed a modal (or the exit-confirm prompt itself, via its own Cancel
+    // button — see BACK_LAYERS) — stay, re-arm.
+    armBackSentinel();
+    return;
+  }
+  // Nothing was open: ask before leaving, rather than silently doing either
+  // extreme (see the block comment above BACK_LAYERS).
+  exitConfirmModal.hidden = false;
+  armBackSentinel();
 });
 
 /* ---- Init ---- */

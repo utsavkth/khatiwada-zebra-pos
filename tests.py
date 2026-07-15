@@ -152,15 +152,29 @@ def run():
     zebra_js = client.get("/static/zebra.js").get_data(as_text=True)
     check("back-button sentinel is wired (popstate closes layers)",
           "popstate" in zebra_js and "armBackSentinel" in zebra_js and "closeTopLayer" in zebra_js)
-    check("back with nothing open never pops past the sentinel (regression: used to "
-          "surface stale Admin history — Admin links back to / with a normal <a href>, "
+    check("back with nothing open never silently pops past the sentinel (regression: used "
+          "to surface stale Admin history — Admin links back to / with a normal <a href>, "
           "so a staff member who visited Admin earlier landed back on admin/login on a "
-          "plain back press)", "history.back()" not in zebra_js)
+          "plain back press). Only the explicit exit-confirm 'Close app' tap may leave, "
+          "via history.go(-2), never a bare history.back()", "history.back()" not in zebra_js)
     with open(os.path.join(os.path.dirname(__file__), "templates", "admin_base.html"), encoding="utf-8") as f:
         admin_base = f.read()
     check("Admin links back to the cashier with a normal push (not history-replacing) — "
-          "relies on back-with-nothing-open being a no-op, not on how this link navigates",
-          "url_for('cashier')" in admin_base)
+          "relies on back-with-nothing-open never silently exiting, not on how this link "
+          "navigates", "url_for('cashier')" in admin_base)
+    check("back with nothing open asks before leaving instead of silently exiting OR "
+          "silently doing nothing (a silent no-op is indistinguishable from a broken "
+          "back button to someone actually trying to leave)",
+          "exit-confirm-modal" in page and "exitConfirmModal" in zebra_js)
+    check("exit-confirm prompt shows BOTH languages at once, not gated by the toggle — "
+          "a rare, consequential moment any staff member must understand immediately",
+          "Close the app?" in page and "एप बन्द गर्ने हो?" in page)
+    check("exit-confirm is itself back-dismissable like every other modal (in BACK_LAYERS, "
+          "cancel button wired) — pressing back on the prompt cancels it, not confirms it",
+          '"exit-confirm-modal"' in zebra_js and "exit-confirm-cancel" in zebra_js)
+    check("closing needs an explicit tap, not a bare history pop — confirmed via a "
+          "one-shot allowExit flag consumed exactly once in the popstate handler",
+          "allowExit" in zebra_js and "history.go(-2)" in zebra_js)
 
     # ---------------------------------------------------------------
     section("Offline: service worker + IndexedDB mirror wiring")
