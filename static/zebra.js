@@ -1,8 +1,12 @@
 /* Zebra POS v2 — handheld cashier screen for the Zebra TC53 (/zebra).
-   Scanning is DataWedge keyboard-wedge: the scanner types the barcode into
-   whatever is focused and sends Enter. So the whole page revolves around one
-   always-focused input (#wedge-input); no camera scanner on this screen.
-   Shares the live database with the original cashier via the same APIs. */
+   Two scan paths run side by side, deduped against each other (see
+   processScannedValue below): DataWedge keyboard-wedge — the scanner types
+   the barcode into whatever is focused and sends Enter, so the page keeps an
+   always-focused input (#wedge-input) — and, when running inside Zebra
+   Enterprise Browser, its native EB.Barcode JS API, which fires a clean
+   callback with no focused input needed at all. No camera scanner on this
+   screen either way. Shares the live database with the original cashier via
+   the same APIs. */
 "use strict";
 
 const bill = []; // { product_name, name_ne, quantity, unit_price, original_price, is_weighed, unit }
@@ -380,6 +384,62 @@ async function handleWedgeEnter(value) {
   }
 }
 
+/* ---- Native Enterprise Browser scan API (EB.Barcode) ----------------------
+   Zebra Enterprise Browser injects its own JS API (ebapi-modules.js +
+   elements.js) into every page when Config.xml has InjectEBLibraries/
+   JSLibraries=1 (already set in this repo's Config.xml) — EB.Barcode.enable()
+   fires a clean callback the instant a scan happens, no focused input or
+   keystroke-timing heuristics needed. Feature-detected: only used when
+   actually running inside Enterprise Browser; a plain Chrome tab (nothing
+   injects EB.* there) just never enables it and keeps using the keyboard-
+   wedge path below unchanged.
+
+   This is ADDITIVE, not a replacement — deliberately. It can't be verified
+   from Sydney whether this device's Enterprise Browser (Config.xml has
+   usedwforscanning=1, i.e. scanning routed through DataWedge under the hood)
+   ALSO independently fires DataWedge's keyboard-wedge keystrokes into the
+   focused input for the very same physical trigger pull. If it does, both
+   paths would fire within milliseconds of each other for one scan.
+   processScannedValue() below gates every scan-string arrival (from either
+   path) through a short dedupe window — long enough to catch a same-instant
+   double-fire, short enough to never block a genuinely fast deliberate
+   re-scan of the same item a moment later. Needs on-device confirmation:
+   does EB.Barcode fire at all here, and if so, does the keyboard-wedge path
+   ALSO fire for the same scan (dedupe should silently absorb it either way). */
+
+let lastScanValue = null;
+let lastScanAt = 0;
+const SCAN_DEDUPE_MS = 500;
+
+function processScannedValue(value) {
+  const now = Date.now();
+  if (value === lastScanValue && now - lastScanAt < SCAN_DEDUPE_MS) return;
+  lastScanValue = value;
+  lastScanAt = now;
+  handleWedgeEnter(value);
+}
+
+function tryEnableNativeScanApi(attemptsLeft = 8) {
+  if (typeof EB !== "undefined" && EB.Barcode && typeof EB.Barcode.enable === "function") {
+    try {
+      // Empty propertyMap: accept Enterprise Browser's own scanner defaults
+      // (symbologies, beep, etc.) rather than guess at property names.
+      EB.Barcode.enable({}, (result) => {
+        const value = (result && result.data != null ? String(result.data) : "").trim();
+        if (value) processScannedValue(value);
+      });
+    } catch {
+      // EB.Barcode existed but enable() failed for some reason — fall through
+      // silently, the keyboard-wedge path below still works regardless.
+    }
+    return;
+  }
+  // EB injects its API into the DOM with no guaranteed timing relative to
+  // this script, so retry briefly before accepting we're in a plain browser.
+  if (attemptsLeft > 0) setTimeout(() => tryEnableNativeScanApi(attemptsLeft - 1), 250);
+}
+tryEnableNativeScanApi();
+
 /* ---- Wedge input: scans (digits + Enter) and manual name search ---- */
 
 const searchResults = document.getElementById("search-results");
@@ -398,7 +458,7 @@ wedgeInput.addEventListener("keydown", (e) => {
   clearTimeout(scanIdleTimer); // Enter resolves the scan — don't fire it twice
   const value = wedgeInput.value.trim();
   if (!value) return;
-  handleWedgeEnter(value);
+  processScannedValue(value);
 });
 
 /* ---- Scan-burst detection (works even when DataWedge sends no Enter) ----
@@ -439,7 +499,7 @@ wedgeInput.addEventListener("input", () => {
       scanIdleTimer = setTimeout(() => {
         const value = wedgeInput.value.trim();
         inputTimes = [];
-        if (value) handleWedgeEnter(value);
+        if (value) processScannedValue(value);
       }, SCAN_IDLE_MS);
       return; // scan in progress — no live search on top of it
     }
