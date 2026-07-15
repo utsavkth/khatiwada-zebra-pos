@@ -20,6 +20,7 @@
       <span class="z-brand">Khatiwada Store</span>
       <div id="header-datetime" class="z-datetime"></div>
     </div>
+    <div id="offline-status" class="z-offline-badge" hidden></div>
     <div class="z-header-actions">
       <button id="lang-toggle" class="lang-toggle" type="button" data-i18n="langToggle">नेपाली</button>
       <a class="lang-toggle" href="{{ url_for('admin_home') }}" data-i18n="admin">⚙ Admin</a>
@@ -224,6 +225,12 @@
 
 <script src="{{ url_for('static', filename='i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='nepali-date.js') }}"></script>
+<script src="{{ url_for('static', filename='offline.js') }}"></script>
 <script src="{{ url_for('static', filename='zebra.js') }}"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+}
+</script>
 </body>
 </html>

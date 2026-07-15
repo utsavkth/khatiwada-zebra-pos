@@ -268,6 +268,20 @@ def init_sales_db():
         )
         """
     )
+    # Zebra-only, ADDITIVE table (the original app never touches it): maps
+    # client-generated sale UUIDs to the sales they created, making the
+    # offline-outbox sync endpoint idempotent. The shared sales/sale_items
+    # tables themselves are unchanged.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS zebra_sale_imports (
+            client_uuid TEXT PRIMARY KEY,
+            sale_id INTEGER NOT NULL,
+            imported_at TEXT NOT NULL,
+            FOREIGN KEY (sale_id) REFERENCES sales (sale_id)
+        )
+        """
+    )
     conn.commit()
     conn.close()
 
@@ -324,6 +338,16 @@ def search_products(query, limit=20):
         LIMIT ?
         """,
         (f"%{query}%", f"%{query}%", limit),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_active_products():
+    """Every active product — the cashier's offline catalog mirror."""
+    conn = get_store_db()
+    rows = conn.execute(
+        "SELECT * FROM products WHERE active = 1 ORDER BY name"
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -722,3 +746,61 @@ def save_sale(items):
     conn.commit()
     conn.close()
     return {"sale_id": sale_id, "date": date, "time": time, "total": total, "item_count": len(items)}
+
+
+def import_sale(client_uuid, items, date=None, time=None):
+    """Idempotently import one client-queued sale (the offline outbox).
+
+    The sale keeps the Kathmandu date/time the CLIENT recorded at the moment
+    of sale — an outage shouldn't shift sales to whenever the connection came
+    back. Malformed/missing timestamps fall back to server now. Returns
+    (sale_dict, imported): imported is False when this client_uuid was
+    already imported, in which case nothing is written.
+    """
+    now = datetime.now(SHOP_TZ)
+    try:
+        datetime.strptime(str(date), "%Y-%m-%d")
+    except (TypeError, ValueError):
+        date = now.date().isoformat()
+    try:
+        datetime.strptime(str(time), "%H:%M:%S")
+    except (TypeError, ValueError):
+        time = now.strftime("%H:%M:%S")
+    total = round(sum(item["line_total"] for item in items), 2)
+
+    conn = get_sales_db()
+    try:
+        existing = conn.execute(
+            "SELECT s.sale_id, s.date, s.time, s.total, s.item_count "
+            "FROM zebra_sale_imports z JOIN sales s ON s.sale_id = z.sale_id "
+            "WHERE z.client_uuid = ?",
+            (client_uuid,),
+        ).fetchone()
+        if existing:
+            return dict(existing), False
+        cur = conn.execute(
+            "INSERT INTO sales (date, time, total, item_count) VALUES (?, ?, ?, ?)",
+            (date, time, total, len(items)),
+        )
+        sale_id = cur.lastrowid
+        conn.executemany(
+            """
+            INSERT INTO sale_items (sale_id, product_name, quantity, unit_price, line_total)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (sale_id, i["product_name"], i["quantity"], i["unit_price"], i["line_total"])
+                for i in items
+            ],
+        )
+        # Same transaction as the sale itself: either the sale AND its ledger
+        # row commit together, or neither does — the idempotency guarantee.
+        conn.execute(
+            "INSERT INTO zebra_sale_imports (client_uuid, sale_id, imported_at) VALUES (?, ?, ?)",
+            (client_uuid, sale_id, now.isoformat()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return {"sale_id": sale_id, "date": date, "time": time, "total": total,
+            "item_count": len(items)}, True

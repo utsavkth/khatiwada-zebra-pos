@@ -158,6 +158,16 @@ def favicon():
     return send_from_directory(app.static_folder, "favicon.svg")
 
 
+@app.route("/sw.js")
+def service_worker():
+    # Served from the root (not /static/) so the service worker's scope covers
+    # the whole app. no-cache so a deploy's new worker is picked up on the
+    # next visit instead of after the browser's heuristic cache expires.
+    response = send_from_directory(app.static_folder, "sw.js")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.route("/")
 def cashier():
     """The Zebra TC53 handheld cashier — DataWedge keyboard-wedge scanning
@@ -179,6 +189,19 @@ def api_product_by_barcode(barcode):
     if product is None:
         return jsonify({"error": "not_found"}), 404
     return jsonify(product)
+
+
+@app.route("/api/catalog")
+def api_catalog():
+    """The full active catalog plus the quick-tap structure, in one payload —
+    mirrored into IndexedDB by the cashier while online so scanning, name
+    search and the quick-tap buttons keep working through an outage."""
+    return jsonify({
+        "products": db.get_active_products(),
+        "groups": db.get_cashier_groups(),
+        "pinned": db.get_pinned_products(),
+        "all_groups": db.get_groups(active_only=True),
+    })
 
 
 @app.route("/api/products/quick-taps")
@@ -241,12 +264,11 @@ def api_quick_add():
     return jsonify(product), 201
 
 
-@app.route("/api/sales", methods=["POST"])
-def api_save_sale():
-    data = request.get_json(silent=True) or {}
-    items = data.get("items")
+def _clean_sale_items(items):
+    """Validate raw sale items from the client. Returns (cleaned, None) or
+    (None, error_string)."""
     if not isinstance(items, list) or not items:
-        return jsonify({"error": "items_required"}), 400
+        return None, "items_required"
     cleaned = []
     for item in items:
         try:
@@ -254,9 +276,9 @@ def api_save_sale():
             unit_price = float(item["unit_price"])
             name = str(item["product_name"]).strip()
         except (KeyError, TypeError, ValueError):
-            return jsonify({"error": "invalid_item"}), 400
+            return None, "invalid_item"
         if not name or quantity <= 0 or unit_price < 0:
-            return jsonify({"error": "invalid_item"}), 400
+            return None, "invalid_item"
         cleaned.append(
             {
                 "product_name": name,
@@ -265,8 +287,55 @@ def api_save_sale():
                 "line_total": round(quantity * unit_price, 2),
             }
         )
+    return cleaned, None
+
+
+@app.route("/api/sales", methods=["POST"])
+def api_save_sale():
+    data = request.get_json(silent=True) or {}
+    cleaned, error = _clean_sale_items(data.get("items"))
+    if error:
+        return jsonify({"error": error}), 400
     sale = db.save_sale(cleaned)
     return jsonify(sale), 201
+
+
+@app.route("/api/sales/sync", methods=["POST"])
+def api_sync_sales():
+    """Idempotent import for the cashier's offline outbox. Accepts a batch of
+    sales, each carrying a client-generated UUID and the Kathmandu date/time
+    the sale actually happened. A UUID that has been imported before is
+    acknowledged as a duplicate without writing anything — so flaky
+    reconnections, retries, and lost responses can never double-record a
+    sale. The cashier sends ONLINE sales through here too (a batch of one)
+    for the same reason."""
+    data = request.get_json(silent=True) or {}
+    sales = data.get("sales")
+    if not isinstance(sales, list) or not sales:
+        return jsonify({"error": "sales_required"}), 400
+    results = []
+    for entry in sales:
+        entry = entry if isinstance(entry, dict) else {}
+        client_uuid = str(entry.get("client_uuid") or "").strip()
+        if not client_uuid or len(client_uuid) > 64:
+            results.append({"client_uuid": client_uuid, "status": "error",
+                            "error": "client_uuid_required"})
+            continue
+        cleaned, error = _clean_sale_items(entry.get("items"))
+        if error:
+            results.append({"client_uuid": client_uuid, "status": "error",
+                            "error": error})
+            continue
+        sale, imported = db.import_sale(
+            client_uuid, cleaned,
+            date=entry.get("date"), time=entry.get("time"),
+        )
+        results.append({
+            "client_uuid": client_uuid,
+            "status": "imported" if imported else "duplicate",
+            "sale_id": sale["sale_id"],
+        })
+    return jsonify({"results": results}), 200
 
 
 # ---- Admin panel ----

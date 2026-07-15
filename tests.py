@@ -154,6 +154,27 @@ def run():
           "popstate" in zebra_js and "armBackSentinel" in zebra_js and "closeTopLayer" in zebra_js)
 
     # ---------------------------------------------------------------
+    section("Offline: service worker + IndexedDB mirror wiring")
+    check("offline.js loads before zebra.js so ZebraOffline exists first",
+          "offline.js" in page and "zebra.js" in page and page.index("offline.js") < page.index("zebra.js"))
+    check("service worker is registered from the cashier page",
+          "serviceWorker" in page and "/sw.js" in page)
+    r = client.get("/sw.js")
+    sw = r.get_data(as_text=True)
+    check("/sw.js is served", r.status_code == 200 and "install" in sw and "fetch" in sw)
+    check("/sw.js is not browser-cached across deploys", r.headers.get("Cache-Control") == "no-cache")
+    check("service worker never intercepts /api/* (offline fallback is app-level, not per-URL)",
+          "/api/" in sw and "startsWith(\"/api/\")" in sw)
+    offline_js = client.get("/static/offline.js").get_data(as_text=True)
+    check("offline.js exposes the catalog + outbox stores",
+          "ZebraOffline" in offline_js and "catalog" in offline_js and "outbox" in offline_js)
+    check("zebra.js falls back to the mirror on a failed lookup/search/quick-taps fetch",
+          "offlineBarcodeLookup" in zebra_js and "offlineNameSearch" in zebra_js
+          and "catalogMirror" in zebra_js)
+    check("zebra.js queues sales offline instead of blocking checkout",
+          "queueSale" in zebra_js and "flushSalesOutbox" in zebra_js and "/api/sales/sync" in zebra_js)
+
+    # ---------------------------------------------------------------
     section("Cashier — search by name and barcode")
     r = client.get("/api/products/search?q=cola")
     check("search by name (case-insensitive)", any(p["name"] == "Test Cola" for p in r.get_json()))
@@ -224,6 +245,66 @@ def run():
     check("missing fields rejected", client.post("/api/sales", json={"items": [{"product_name": "X"}]}).status_code == 400)
     check("negative quantity rejected",
           client.post("/api/sales", json={"items": [{"product_name": "X", "quantity": -1, "unit_price": 5}]}).status_code == 400)
+
+    # ---------------------------------------------------------------
+    section("Cashier — offline catalog mirror (/api/catalog)")
+    catalog = client.get("/api/catalog").get_json()
+    check("catalog carries the active product list",
+          any(p["name"] == "Test Noodles" for p in catalog["products"]))
+    check("catalog carries the same quick-tap shape as /api/products/quick-taps",
+          set(catalog.keys()) == {"products", "groups", "pinned", "all_groups"})
+    check("catalog groups match the live quick-taps groups",
+          {g["name"] for g in catalog["groups"]} == {g["name"] for g in data["groups"]})
+
+    # ---------------------------------------------------------------
+    section("Cashier — offline sales outbox sync (/api/sales/sync)")
+    before_items = _count_sale_items()
+    uuid_a = "11111111-1111-1111-1111-111111111111"
+    r = client.post("/api/sales/sync", json={"sales": [{
+        "client_uuid": uuid_a, "date": "2026-07-10", "time": "18:45:00",
+        "items": [{"product_name": "Test Cola", "quantity": 2, "unit_price": 70}],
+    }]})
+    check("sync returns 200", r.status_code == 200)
+    result = r.get_json()["results"][0]
+    check("first sync imports the sale", result["status"] == "imported")
+    sale_id_a = result["sale_id"]
+    _conn = db.get_sales_db()
+    _row = _conn.execute("SELECT date, time FROM sales WHERE sale_id=?", (sale_id_a,)).fetchone()
+    _conn.close()
+    check("imported sale keeps the CLIENT's offline timestamp, not server-now",
+          (_row["date"], _row["time"]) == ("2026-07-10", "18:45:00"))
+    check("imported sale's items were written", _count_sale_items() == before_items + 1)
+
+    # Retrying the exact same client_uuid (lost response / retried request /
+    # the periodic re-flush) must NOT create a second sale.
+    r = client.post("/api/sales/sync", json={"sales": [{
+        "client_uuid": uuid_a, "date": "2026-07-10", "time": "18:45:00",
+        "items": [{"product_name": "Test Cola", "quantity": 2, "unit_price": 70}],
+    }]})
+    result = r.get_json()["results"][0]
+    check("re-syncing the same client_uuid is reported as a duplicate", result["status"] == "duplicate")
+    check("duplicate resolves to the SAME sale_id", result["sale_id"] == sale_id_a)
+    check("duplicate sync wrote no new rows", _count_sale_items() == before_items + 1)
+
+    # A batch can carry more than one sale (the whole queued outbox at once).
+    uuid_b = "22222222-2222-2222-2222-222222222222"
+    uuid_c = "33333333-3333-3333-3333-333333333333"
+    r = client.post("/api/sales/sync", json={"sales": [
+        {"client_uuid": uuid_b, "items": [{"product_name": "Test Noodles", "quantity": 1, "unit_price": 25}]},
+        {"client_uuid": uuid_c, "items": [{"product_name": "Test Noodles", "quantity": 1, "unit_price": 25}]},
+    ]})
+    results = {res["client_uuid"]: res for res in r.get_json()["results"]}
+    check("batch imports every distinct sale", all(res["status"] == "imported" for res in results.values()))
+    check("batch sales get distinct sale_ids", results[uuid_b]["sale_id"] != results[uuid_c]["sale_id"])
+    check("missing/blank client_uuid rejected without writing a row",
+          client.post("/api/sales/sync", json={"sales": [{"items": [
+              {"product_name": "X", "quantity": 1, "unit_price": 5}]}]}
+          ).get_json()["results"][0]["status"] == "error")
+    check("malformed items inside a sync batch reported per-sale, not a hard failure",
+          client.post("/api/sales/sync", json={"sales": [
+              {"client_uuid": "44444444-4444-4444-4444-444444444444", "items": []}]}
+          ).get_json()["results"][0]["status"] == "error")
+    check("empty batch rejected", client.post("/api/sales/sync", json={"sales": []}).status_code == 400)
 
     # ---------------------------------------------------------------
     section("Admin — first-run set-password + authentication")
