@@ -178,7 +178,13 @@ cert/domain details).
 - `nepali_date.py` — Bikram Sambat conversion for the admin reports
 - `templates/zebra.html`, `static/zebra.js`, `static/zebra.css` — the Zebra
   cashier UI (always-focused `#wedge-input`, payment step, saved carts);
-  `zebra.css` loads after `style.css` and reuses its components
+  `zebra.css` loads after `style.css` and reuses its components. `zebra.js`
+  includes a history-sentinel so the Android back key/gesture closes the top
+  open layer (modal → payment step → active search) instead of leaving the
+  page — it only truly navigates away when nothing is open
+- `static/manifest.json`, `static/icon-192.png`, `static/icon-512.png` — web
+  app manifest + PNG icons so the cashier can be pinned to the TC53 home
+  screen as a standalone app (still browser-based — decision 11 unchanged)
 - `templates/admin_*.html`, `static/admin.css`, `static/admin-products.js` —
   the admin portal (copied, unchanged)
 - `static/fonepay-static-qr.jpg` — the shop's REAL static Fonepay QR
