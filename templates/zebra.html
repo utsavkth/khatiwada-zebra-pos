@@ -221,6 +221,27 @@
   </div>
 </div>
 
+<!-- Exit confirmation: back with nothing else open asks before leaving the
+     till, in BOTH languages at once regardless of the toggle — a rare,
+     consequential moment any staff member needs to understand immediately,
+     whichever language they usually read. -->
+<div id="exit-confirm-modal" class="modal" hidden>
+  <div class="modal-box exit-confirm-box">
+    <h3 class="exit-confirm-title">
+      <strong>Close the app?</strong><br>
+      <strong>एप बन्द गर्ने हो?</strong>
+    </h3>
+    <p class="exit-confirm-body">
+      <strong>You will leave the till screen.</strong><br>
+      <strong>तपाईं बिक्री स्क्रिनबाट बाहिरिनुहुनेछ।</strong>
+    </p>
+    <div class="modal-actions">
+      <button id="exit-confirm-cancel" class="btn btn-cancel" type="button">Cancel / रद्द गर्नुहोस्</button>
+      <button id="exit-confirm-close" class="btn btn-danger-solid" type="button">Close app / एप बन्द गर्नुहोस्</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast" hidden></div>
 
 <script src="{{ url_for('static', filename='i18n.js') }}"></script>

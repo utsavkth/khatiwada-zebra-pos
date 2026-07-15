@@ -226,10 +226,28 @@ app explicitly accepted pen-and-paper during outages — its v1 decision
      back to the cashier with a normal `<a href>` push, so a staff member
      who'd visited Admin earlier in the session had THAT history sitting
      right behind the cashier's base entry, and a plain back press on the
-     till surfaced the admin login screen. Fixed by making back-with-
-     nothing-open a no-op (re-arm and stay): accidentally exiting a till
-     mid-shift is worse than back doing nothing, and staff have the
-     device's home button/gesture for that anyway.
+     till surfaced the admin login screen. First fix: made back-with-
+     nothing-open a silent no-op (re-arm and stay). Superseded same day
+     below — a silent no-op is indistinguishable from "the back button
+     doesn't work" to someone actually trying to leave, and Utsav
+     reported it still landing on the splash screen on-device (either a
+     stale deploy, or a code path this couldn't rule out from Sydney —
+     an installed/standalone PWA's back stack isn't entirely a JS-side
+     concern once history genuinely runs out).
+10. Exit-confirm prompt (2026-07-15, same day, supersedes the silent no-op
+    in point 9): back with nothing else open now shows an explicit
+    `#exit-confirm-modal` — bold, BOTH languages always shown at once
+    (not gated by the language toggle, since this is a rare, consequential
+    moment any staff member must understand immediately) — "Close the
+    app? / एप बन्द गर्ने हो?" with Cancel (stay, matches every other
+    modal's back-dismiss behaviour — it's in `BACK_LAYERS` too) and
+    "Close app" (leave). There is no reliable single-tap "close this
+    installed PWA" web API, so "Close app" does its best: `history.go(-2)`
+    (often exits in one tap when there's nothing real behind the base
+    entry) plus a 5-second `allowExit` window (a bilingual toast: "Press
+    Back once more to close") so a leftover physical back press is let
+    through for real instead of re-prompting, covering the case where
+    something (e.g. stale Admin history) was behind base after all.
 
 ## Database schema
 
