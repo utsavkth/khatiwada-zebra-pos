@@ -66,29 +66,6 @@ function refocusWedge() {
 document.addEventListener("click", refocusWedge);
 window.addEventListener("focus", refocusWedge);
 
-/* ---- Typing mode (Android soft keyboard on demand) ----
-   The wedge input carries inputmode="none" so the constant refocusing never
-   pops Android's soft keyboard — DataWedge injects key events regardless of
-   keyboard visibility. The keyboard button flips the input to typing mode
-   for a hand-typed name search; any completed action drops back to scan
-   mode. The blur/focus bounce is what makes Android re-read inputmode. */
-
-const keyboardBtn = document.getElementById("wedge-keyboard-btn");
-let typingMode = false;
-
-function setTypingMode(on) {
-  typingMode = on;
-  wedgeInput.setAttribute("inputmode", on ? "text" : "none");
-  keyboardBtn.classList.toggle("active", on);
-  wedgeInput.blur();
-  setTimeout(() => wedgeInput.focus(), 40);
-}
-
-keyboardBtn.addEventListener("click", (e) => {
-  e.stopPropagation(); // keep the document-level refocus handler out of it
-  setTypingMode(!typingMode);
-});
-
 /* ---- Cart rendering (same bill semantics as the original cashier) ---- */
 
 function renderBill() {
@@ -274,64 +251,22 @@ function clearWedge() {
   wedgeInput.value = "";
   searchResults.hidden = true;
   searchResults.innerHTML = "";
-  if (typingMode) setTypingMode(false); // done typing — back to scan mode
 }
 
 wedgeInput.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   e.preventDefault();
-  clearTimeout(scanIdleTimer); // Enter resolves the scan — don't fire it twice
   const value = wedgeInput.value.trim();
   if (!value) return;
   handleWedgeEnter(value);
 });
 
-/* ---- Scan-burst detection (works even when DataWedge sends no Enter) ----
-   DataWedge SHOULD be configured to send an Enter suffix (Profile0 ->
-   Keystroke output -> Basic data formatting -> Send ENTER key), but the app
-   must not depend on per-device config: the scanner "types" the whole code in
-   a burst far faster than a person can. A space-free value of 6+ characters
-   that arrived at scanner speed and then went idle is treated as a completed
-   scan, exactly as if Enter had followed it. Human typing (slower keystrokes)
-   keeps the normal behaviour: live search for names, Enter to look up a
-   hand-typed barcode. */
-const SCAN_BURST_MS_PER_CHAR = 60; // wedge keystrokes arrive every ~10-30ms
-const SCAN_IDLE_MS = 180;          // quiet time that marks the scan complete
-
-let inputTimes = [];
-let scanIdleTimer = null;
-
 wedgeInput.addEventListener("input", () => {
   clearTimeout(searchTimer);
-  clearTimeout(scanIdleTimer);
   const q = wedgeInput.value.trim();
-  if (!q) {
-    inputTimes = [];
-    searchResults.hidden = true;
-    searchResults.innerHTML = "";
-    return;
-  }
-  const now = performance.now();
-  inputTimes.push(now);
-  if (inputTimes.length > 64) inputTimes = inputTimes.slice(-64);
-
-  // A burst: the last q.length keystrokes all landed at scanner speed. Also
-  // true when the whole code arrives as a single input event (some wedge
-  // modes inject the string in one go).
-  if (/^\S{6,}$/.test(q)) {
-    const start = inputTimes[Math.max(0, inputTimes.length - q.length)];
-    if (now - start <= q.length * SCAN_BURST_MS_PER_CHAR) {
-      scanIdleTimer = setTimeout(() => {
-        const value = wedgeInput.value.trim();
-        inputTimes = [];
-        if (value) handleWedgeEnter(value);
-      }, SCAN_IDLE_MS);
-      return; // scan in progress — no live search on top of it
-    }
-  }
-
-  // Hand-typed digits: wait for Enter rather than searching mid-number.
-  if (/^\d+$/.test(q)) {
+  // All-digit input is (probably) a scan in progress — don't search mid-scan,
+  // the Enter keydown will resolve it as a barcode.
+  if (!q || /^\d+$/.test(q)) {
     searchResults.hidden = true;
     searchResults.innerHTML = "";
     return;
@@ -995,6 +930,72 @@ function updateHeaderClock() {
 }
 updateHeaderClock();
 setInterval(updateHeaderClock, 15000);
+
+/* ---- Android back button: close layers instead of leaving the page ----
+   On the TC53 (capacitive key or gesture) "back" is a history pop. With only
+   one history entry that pop leaves the app — a trap when all the user wanted
+   was to dismiss a modal. Pattern: keep exactly ONE sentinel entry pushed
+   above the real entry at all times. A back press pops the sentinel; the
+   popstate handler then closes the topmost open layer (modal → payment step →
+   active search) and re-arms the sentinel. Only when nothing is open does
+   back actually leave (we pop the real entry too). No history calls happen
+   during normal modal open/close, so there are no async popstate races. */
+
+// Topmost first: the duplicate warning stacks ON TOP of Quick Add, so it must
+// be dismissed first. Each entry reuses the modal's own cancel/back button so
+// back behaves exactly like tapping Cancel (state reset + wedge refocus).
+const BACK_LAYERS = [
+  { modal: "duplicate-modal", cancel: "dup-cancel" },
+  { modal: "payment-modal", cancel: "payment-back" },
+  { modal: "quick-add-modal", cancel: "quick-add-cancel" },
+  { modal: "cart-name-modal", cancel: "cart-name-cancel" },
+  { modal: "weight-modal", cancel: "weight-cancel" },
+  { modal: "variety-modal", cancel: "variety-cancel" },
+  { modal: "price-modal", cancel: "price-cancel" },
+];
+
+function closeTopLayer() {
+  for (const layer of BACK_LAYERS) {
+    if (!document.getElementById(layer.modal).hidden) {
+      document.getElementById(layer.cancel).click();
+      return true;
+    }
+  }
+  if (!searchResults.hidden) {
+    clearWedge();
+    refocusWedge();
+    return true;
+  }
+  return false;
+}
+
+function armBackSentinel() {
+  history.pushState({ zebra: "sentinel" }, "");
+}
+
+if (!history.state || !history.state.zebra) {
+  history.replaceState({ zebra: "base" }, "");
+  armBackSentinel();
+} else if (history.state.zebra === "base") {
+  // Landed back on the base entry (e.g. returning from Admin) — re-arm.
+  armBackSentinel();
+}
+
+window.addEventListener("pageshow", (e) => {
+  if (e.persisted && history.state && history.state.zebra === "base") armBackSentinel();
+});
+
+window.addEventListener("popstate", () => {
+  // Forward navigation back onto the sentinel — nothing to do.
+  if (history.state && history.state.zebra === "sentinel") return;
+  if (closeTopLayer()) {
+    armBackSentinel();
+  } else {
+    // Nothing open: a second pop leaves for real (previous page, or no-op if
+    // this was the first entry — the till simply stays put, which is fine).
+    history.back();
+  }
+});
 
 /* ---- Init ---- */
 
