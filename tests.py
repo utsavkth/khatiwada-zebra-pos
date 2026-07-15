@@ -177,6 +177,27 @@ def run():
           "allowExit" in zebra_js and "history.go(-2)" in zebra_js)
 
     # ---------------------------------------------------------------
+    section("Native Enterprise Browser scan API (EB.Barcode) — additive, deduped")
+    check("EB.Barcode is feature-detected, not assumed (a plain Chrome tab has no EB.* "
+          "injected, so this must never throw there)",
+          "typeof EB !== \"undefined\"" in zebra_js and "EB.Barcode" in zebra_js)
+    check("enabling EB.Barcode retries briefly instead of a single check (regression risk: "
+          "Enterprise Browser injects its own API into the DOM with no guaranteed timing "
+          "relative to this script)",
+          "tryEnableNativeScanApi" in zebra_js and "attemptsLeft" in zebra_js)
+    check("EB.Barcode.enable() is wrapped in try/catch — a failure here must fall through "
+          "silently, never break the proven keyboard-wedge path",
+          "EB.Barcode.enable({}" in zebra_js)
+    check("both scan entry points (Enter keypress, burst-detection timer) funnel through "
+          "the same dedupe gate as the native scan callback, not straight to handleWedgeEnter "
+          "— guards against EB.Barcode and DataWedge keyboard-wedge both firing for one "
+          "physical scan, unconfirmed on-device either way",
+          zebra_js.count("processScannedValue(value)") >= 3)
+    check("dedupe window is short enough to never block a genuinely fast deliberate "
+          "re-scan of the same item, just the same-instant double-fire case",
+          "SCAN_DEDUPE_MS = 500" in zebra_js)
+
+    # ---------------------------------------------------------------
     section("Offline: service worker + IndexedDB mirror wiring")
     check("offline.js loads before zebra.js so ZebraOffline exists first",
           "offline.js" in page and "zebra.js" in page and page.index("offline.js") < page.index("zebra.js"))
