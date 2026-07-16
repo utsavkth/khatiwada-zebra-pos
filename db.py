@@ -353,6 +353,34 @@ def get_active_products():
     return [dict(r) for r in rows]
 
 
+def get_weighed_products():
+    """Every active weighed product — the candidate list for the admin
+    shelf-label barcode print page (CLAUDE.md decision 3)."""
+    conn = get_store_db()
+    rows = conn.execute(
+        "SELECT * FROM products WHERE active = 1 AND is_weighed = 1 ORDER BY weighed_group, name"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def all_barcodes():
+    """Every barcode currently in use, active or not (matches the existing
+    duplicate-guard convention of checking across both) — kept unique when
+    generating shelf-label codes."""
+    conn = get_store_db()
+    rows = conn.execute("SELECT barcode FROM products WHERE barcode IS NOT NULL").fetchall()
+    conn.close()
+    return {r["barcode"] for r in rows}
+
+
+def set_product_barcode(product_id, barcode):
+    conn = get_store_db()
+    conn.execute("UPDATE products SET barcode = ? WHERE id = ?", (barcode, product_id))
+    conn.commit()
+    conn.close()
+
+
 def get_product_by_barcode(barcode):
     """Return the active product with this barcode, or None."""
     conn = get_store_db()

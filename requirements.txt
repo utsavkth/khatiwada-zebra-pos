@@ -2,3 +2,4 @@ Flask==3.0.3
 tzdata==2024.1
 gunicorn==22.0.0
 Pillow==11.0.0
+python-barcode==0.16.1

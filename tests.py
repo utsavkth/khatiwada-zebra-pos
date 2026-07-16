@@ -515,6 +515,70 @@ def run():
     check("Salt shows under Other group", any(p["name"] == "Salt" for p in other))
 
     # ---------------------------------------------------------------
+    section("Admin — shelf-label barcode printing (CLAUDE.md decision 3)")
+    html = client.get("/admin/labels").get_data(as_text=True)
+    check("labels page lists weighed products", "Basmati Rice" in html)
+    check("labels page never lists fixed-price products", "Test Cola" not in html)
+    m = re.search(r'name="barcode_(\d+)"\s+value="(WT-BASMATI-RICE[^"]*)"', html)
+    check("code auto-suggested from the product name (Basmati Rice -> WT-BASMATI-RICE)", m is not None)
+    rice_id, rice_code = (m.group(1), m.group(2)) if m else (None, None)
+    check("missing-code rows are pre-checked for printing",
+          m is not None and f'value="{rice_id}"' in html and re.search(
+              rf'name="select" value="{rice_id}"\s+checked', html) is not None)
+
+    # No selection at all
+    r = client.post("/admin/labels", data={})
+    check("submitting with nothing selected is rejected",
+          b"Select at least one product" in r.data)
+
+    # A real end-to-end save: print Basmati Rice with its suggested code
+    r = client.post("/admin/labels", data={"select": [rice_id], f"barcode_{rice_id}": rice_code})
+    check("saving a valid selection redirects to the print page",
+          r.status_code == 302 and f"ids=" in r.headers["Location"] and rice_id in r.headers["Location"])
+    rice_after = db.get_product(int(rice_id))
+    check("the code is actually saved to the product's barcode column", rice_after["barcode"] == rice_code)
+
+    r = client.get(r.headers["Location"])
+    print_html = r.get_data(as_text=True)
+    check("print page renders the product name + price + code", "Basmati Rice" in print_html and rice_code in print_html)
+    check("print page embeds a real scannable Code128 SVG (bars, not a placeholder)",
+          "<svg" in print_html and print_html.count("<rect") > 10)
+
+    # The whole point: scanning the printed code now finds the product, same
+    # as any other barcode (zebra.js's handleWedgeEnter exact-match path).
+    r = client.get(f"/api/products/barcode/{rice_code}")
+    check("scanning the shelf-label code looks the product up like any barcode",
+          r.status_code == 200 and r.get_json()["name"] == "Basmati Rice" and r.get_json()["is_weighed"] == 1)
+
+    # Validation: blank code
+    r = client.post("/admin/labels", data={"select": [rice_id], f"barcode_{rice_id}": ""})
+    check("blank code is rejected", b"needs a code" in r.data)
+
+    # Validation: code with a space (would silently fall to name-search on scan)
+    r = client.post("/admin/labels", data={"select": [rice_id], f"barcode_{rice_id}": "WT RICE"})
+    check("code with a space is rejected (scanning depends on no-space codes)", b"no spaces" in r.data)
+
+    # Validation: two selected products given the same code in one submission
+    mansuli = _product_by_name("Mansuli Rice")
+    r = client.post("/admin/labels", data={
+        "select": [rice_id, str(mansuli["id"])],
+        f"barcode_{rice_id}": "WT-DUPE",
+        f"barcode_{mansuli['id']}": "WT-DUPE",
+    })
+    check("two products given the same code in one batch is rejected", b"both use the code" in r.data)
+
+    # Validation: code collides with a different, already-existing barcode
+    r = client.post("/admin/labels", data={"select": [str(mansuli["id"])], f"barcode_{mansuli['id']}": rice_code})
+    check("a code already used by another product is rejected",
+          f"already used by".encode() in r.data)
+    check("the rejected collision did not overwrite the other product's barcode",
+          db.get_product(mansuli["id"])["barcode"] != rice_code)
+
+    # Printing an empty/garbage id list doesn't crash, just bounces back
+    r = client.get("/admin/labels/print?ids=99999,notanumber")
+    check("print page with no valid ids redirects back instead of erroring", r.status_code == 302)
+
+    # ---------------------------------------------------------------
     section("Admin — products search & category filter")
     check("admin name search filters", b"Basmati Rice" in client.get("/admin/products?q=basmati").data)
     html = client.get("/admin/products?category=lpg").data

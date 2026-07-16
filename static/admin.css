@@ -175,6 +175,21 @@ input:focus, select:focus {
 .chip-cosmetics { background: #ede9fe; color: #6d28d9; }
 .chip-inactive-state { background: #f1f5f9; color: #475569; }
 .thumb-cell { width: 44px; }
+
+/* Print-labels page: selection checkbox + editable shelf-label code */
+.label-check-col { width: 36px; }
+.label-check-col input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); }
+.label-code-input {
+  width: 100%;
+  min-width: 160px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.label-code-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+
 .table-thumb {
   width: 36px; height: 36px; display: block;
   object-fit: cover; border-radius: 7px; background: #f1f5f9;

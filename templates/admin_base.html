@@ -18,6 +18,7 @@
   <a class="side-link {{ 'active' if ep.startswith('admin_product') }}" href="{{ url_for('admin_products') }}">Products</a>
   <a class="side-link {{ 'active' if ep.startswith('admin_group') }}" href="{{ url_for('admin_groups') }}">Groups</a>
   <a class="side-link {{ 'active' if ep.startswith('admin_duplicates') }}" href="{{ url_for('admin_duplicates') }}">Duplicates</a>
+  <a class="side-link {{ 'active' if ep.startswith('admin_labels') }}" href="{{ url_for('admin_labels') }}">Print labels</a>
 
   <div class="side-section">Reports &amp; data</div>
   <a class="side-link {{ 'active' if ep == 'admin_reports' }}" href="{{ url_for('admin_reports') }}">Reports</a>

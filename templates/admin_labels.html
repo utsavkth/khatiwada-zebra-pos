@@ -1,0 +1,65 @@
+{% extends "admin_base.html" %}
+{% block title %}Print labels{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Print labels</h1>
+</div>
+
+<p class="hint">
+  Shelf-label barcodes for weighed products (rice, dal, sugar…) — print, cut
+  out, and stick on the bin. Scanning the label opens the weight pad directly,
+  a faster alternative to tapping through the category picker. Each code is
+  auto-suggested from the product name; edit any of them before printing.
+</p>
+
+{% if error %}<p class="error">⚠️ {{ error }}</p>{% endif %}
+
+{% if not products %}
+  <p class="hint">No weighed products yet — add some under
+    <a href="{{ url_for('admin_products') }}">Products</a> first.</p>
+{% else %}
+<form method="post" id="labels-form">
+  <table>
+    <thead>
+      <tr>
+        <th class="label-check-col"><input type="checkbox" id="check-all" aria-label="Select all"></th>
+        <th>Product</th>
+        <th>Group</th>
+        <th class="num">Price</th>
+        <th>Barcode</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td class="label-check-col">
+          <input type="checkbox" name="select" value="{{ p.id }}"
+                 {% if p.id in checked %}checked{% endif %} aria-label="Select {{ p.name }}">
+        </td>
+        <td>{{ p.name }}{% if not p.barcode %} <span class="chip chip-lpg">new code</span>{% endif %}</td>
+        <td>{{ p.weighed_group or "—" }}</td>
+        <td class="num">{{ p.price | rs }}/{{ p.unit }}</td>
+        <td>
+          <input type="text" name="barcode_{{ p.id }}" value="{{ overrides[p.id] }}"
+                 class="label-code-input" autocomplete="off" spellcheck="false">
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="form-actions">
+    <button type="submit" class="button">Save codes &amp; prepare labels</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  const checkAll = document.getElementById("check-all");
+  if (checkAll) {
+    checkAll.addEventListener("change", () => {
+      document.querySelectorAll('input[name="select"]').forEach((cb) => { cb.checked = checkAll.checked; });
+    });
+  }
+</script>
+{% endblock %}
