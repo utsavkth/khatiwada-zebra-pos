@@ -574,6 +574,21 @@ def run():
     check("the rejected collision did not overwrite the other product's barcode",
           db.get_product(mansuli["id"])["barcode"] != rice_code)
 
+    # Printed labels have no per-print language toggle, so both names show
+    # together (a fresh product, to avoid any ambiguity with the earlier
+    # name_ne test section's duplicate "Basmati Rice" row)
+    client.post("/admin/products/new", data={
+        "name": "Chiya Patti", "name_ne": "चिया पत्ती", "barcode": "",
+        "category": "weighed", "price": "300", "unit": "kg", "is_weighed": "1", "weighed_group": "Other"})
+    chiya = _product_by_name("Chiya Patti")
+    r = client.post("/admin/labels", data={"select": [str(chiya["id"])], f"barcode_{chiya['id']}": "WT-CHIYA-PATTI"})
+    r = client.get(r.headers["Location"])
+    chiya_print_html = r.get_data(as_text=True)
+    check("print label shows the Nepali name alongside English (no on-print language toggle)",
+          "Chiya Patti" in chiya_print_html and "चिया पत्ती" in chiya_print_html)
+    check("a product with no Nepali name doesn't emit an empty label-name-ne span",
+          '<span class="label-name-ne"></span>' not in print_html)
+
     # Printing an empty/garbage id list doesn't crash, just bounces back
     r = client.get("/admin/labels/print?ids=99999,notanumber")
     check("print page with no valid ids redirects back instead of erroring", r.status_code == 302)

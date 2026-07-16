@@ -55,6 +55,10 @@
     break-inside: avoid;
   }
   .label-name { font-weight: 800; font-size: 0.95rem; line-height: 1.2; }
+  /* Printed labels have no language toggle to fall back on (unlike the
+     on-screen UI's productDisplayName), so both names show together —
+     same "always show both, no gating" pattern as the exit-confirm prompt. */
+  .label-name-ne { font-weight: 700; font-size: 0.85rem; line-height: 1.2; color: #475569; }
   .label-price { font-size: 0.8rem; color: #64748b; font-variant-numeric: tabular-nums; }
   .label-svg { width: 100%; max-width: 200px; }
   .label-svg svg { width: 100%; height: auto; display: block; }
@@ -79,6 +83,7 @@
   {% for l in labels %}
   <div class="label">
     <span class="label-name">{{ l.product.name }}</span>
+    {% if l.product.name_ne %}<span class="label-name-ne">{{ l.product.name_ne }}</span>{% endif %}
     <span class="label-price">{{ l.product.price | rs }}/{{ l.product.unit }}</span>
     <span class="label-svg">{{ l.svg | safe }}</span>
     <span class="label-code">{{ l.product.barcode }}</span>
