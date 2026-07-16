@@ -9,6 +9,7 @@ import csv
 import hashlib
 import io
 import os
+import re
 import secrets
 import uuid
 from datetime import date as date_cls
@@ -29,6 +30,7 @@ from flask import (
 from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import barcode_labels
 import db
 import nepali_date
 
@@ -582,6 +584,90 @@ def admin_duplicates_cleanup():
     removed = db.remove_duplicate_products()
     flash(f"Removed {removed} duplicate {'copy' if removed == 1 else 'copies'} (kept one of each).")
     return redirect(url_for("admin_products"))
+
+
+# ---- Shelf-label barcodes for weighed products (CLAUDE.md decision 3) ----
+
+# Scanning depends on codes never containing a space (zebra.js's handleWedgeEnter
+# treats any space-free value as an exact-barcode candidate first, falling back
+# to name search otherwise) — kept intentionally narrower than that one rule so
+# every code is also guaranteed printable/typeable and Code128-safe.
+LABEL_CODE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+@app.route("/admin/labels", methods=["GET", "POST"])
+@admin_required
+def admin_labels():
+    products = db.get_weighed_products()
+    error = None
+
+    if request.method == "POST":
+        selected_ids = {int(pid) for pid in request.form.getlist("select")}
+        overrides = {p["id"]: request.form.get(f"barcode_{p['id']}", "").strip() for p in products}
+        checked = selected_ids
+        if not selected_ids:
+            error = "Select at least one product to print."
+        else:
+            seen = {}
+            for p in products:
+                if p["id"] not in selected_ids:
+                    continue
+                code = overrides[p["id"]]
+                if not code:
+                    error = f'"{p["name"]}" needs a code before it can be printed.'
+                    break
+                if not LABEL_CODE_RE.match(code):
+                    error = (f'"{p["name"]}"\'s code can only use letters, numbers, '
+                             f"hyphens and underscores (no spaces) — scanning depends on it.")
+                    break
+                if code in seen:
+                    error = f'"{p["name"]}" and "{seen[code]}" both use the code {code} — codes must be unique.'
+                    break
+                dup = db.find_duplicate_product(None, barcode=code, exclude_id=p["id"])
+                if dup:
+                    error = f'The code {code} is already used by "{dup["name"]}".'
+                    break
+                seen[code] = p["name"]
+            if not error:
+                for p in products:
+                    if p["id"] in selected_ids and overrides[p["id"]] != (p["barcode"] or ""):
+                        db.set_product_barcode(p["id"], overrides[p["id"]])
+                ids = ",".join(str(i) for i in sorted(selected_ids))
+                return redirect(url_for("admin_labels_print", ids=ids))
+    else:
+        existing = db.all_barcodes()
+        overrides = {}
+        for p in products:
+            overrides[p["id"]] = p["barcode"] or barcode_labels.suggest_code(p["name"], existing)
+        # Pre-check only products still missing a code — reprinting an
+        # already-labelled item is deliberate (staff tick it themselves),
+        # not the default, so a routine visit to this page can't waste stickers.
+        checked = {p["id"] for p in products if not p["barcode"]}
+
+    return render_template(
+        "admin_labels.html",
+        products=products,
+        error=error,
+        overrides=overrides,
+        checked=checked,
+    )
+
+
+@app.route("/admin/labels/print")
+@admin_required
+def admin_labels_print():
+    try:
+        ids = [int(x) for x in request.args.get("ids", "").split(",") if x]
+    except ValueError:
+        ids = []
+    labels = []
+    for product_id in ids:
+        product = db.get_product(product_id)
+        if product and product["barcode"]:
+            labels.append({"product": product, "svg": barcode_labels.render_svg(product["barcode"])})
+    if not labels:
+        return redirect(url_for("admin_labels"))
+    return render_template("admin_labels_print.html", labels=labels)
 
 
 # ---- Cashier button groups (user-defined) ----

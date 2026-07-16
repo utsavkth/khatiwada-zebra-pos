@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Print labels — Khatiwada Store</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #f4f6f8;
+    color: #0f172a;
+    padding: 20px;
+  }
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .toolbar button, .toolbar a {
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+  .toolbar button { background: #2563eb; color: #fff; }
+  .toolbar a { background: #64748b; color: #fff; }
+  .hint { color: #64748b; font-size: 0.9rem; margin-bottom: 18px; }
+
+  /* One label per sticker: name + price on top, barcode + human-readable
+     code below, sized to fit common sheet-label dimensions (~64x33mm) while
+     staying flexible for whatever sticker sheet is actually in the printer. */
+  .label-sheet {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  .label {
+    border: 1px dashed #94a3b8;
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+    break-inside: avoid;
+  }
+  .label-name { font-weight: 800; font-size: 0.95rem; line-height: 1.2; }
+  .label-price { font-size: 0.8rem; color: #64748b; font-variant-numeric: tabular-nums; }
+  .label-svg { width: 100%; max-width: 200px; }
+  .label-svg svg { width: 100%; height: auto; display: block; }
+  .label-code { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em; font-family: ui-monospace, monospace; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .toolbar, .hint { display: none; }
+    .label { border-style: solid; border-color: #cbd5e1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button type="button" onclick="window.print()">🖨️ Print</button>
+  <a href="{{ url_for('admin_labels') }}">← Back to labels</a>
+</div>
+<p class="hint">{{ labels | length }} label{{ "s" if labels | length != 1 else "" }} ready — use your browser's print dialog (sticker/label paper if you have it, plain paper + scissors otherwise).</p>
+
+<div class="label-sheet">
+  {% for l in labels %}
+  <div class="label">
+    <span class="label-name">{{ l.product.name }}</span>
+    <span class="label-price">{{ l.product.price | rs }}/{{ l.product.unit }}</span>
+    <span class="label-svg">{{ l.svg | safe }}</span>
+    <span class="label-code">{{ l.product.barcode }}</span>
+  </div>
+  {% endfor %}
+</div>
+
+</body>
+</html>

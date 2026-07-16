@@ -89,6 +89,8 @@ modify the original repo. This is a parked/experimental build until proven.
    or tap through category → variety) must lead to the exact same weight
    pad — scanning is an additional fast path, not a replacement for
    manual navigation, which must keep working exactly as it does today.
+   ✅ Shelf-label generation/printing built (2026-07-16) — see the admin
+   "Print labels" page in Project structure below.
 4. Secondary hardware: existing Lenovo Chromebook Duet, repurposed as the
    "register/customer display" — shows the live-synced cart as items are
    scanned on the Zebra. This is a SEPARATE browser session/view of the
@@ -296,6 +298,15 @@ cert/domain details).
   decision above for the full design
 - `templates/admin_*.html`, `static/admin.css`, `static/admin-products.js` —
   the admin portal (copied, unchanged)
+- `barcode_labels.py`, `templates/admin_labels.html`,
+  `templates/admin_labels_print.html` — admin "Print labels" page (decision 3
+  follow-through): lists active weighed products, auto-suggests a shelf-label
+  code from each name (e.g. "Basmati Rice" → `WT-BASMATI-RICE`, editable),
+  saves the chosen codes to `products.barcode` on submit, then renders a
+  print-ready sheet of real Code128 barcodes (via `python-barcode`, inline
+  SVG, no CDN). Scanning a printed label already works with zero extra
+  code — `zebra.js`'s exact-barcode-first lookup and the weighed → weight-pad
+  routing were both built in the original July 13 cashier work.
 - `static/fonepay-static-qr.jpg` — the shop's REAL static Fonepay QR
   (terminal 2222150006683313), cropped from the official Fonepay PDF; shown on
   the payment step. `renderPaymentQr(saleTotal)` in `static/zebra.js` is the
