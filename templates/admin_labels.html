@@ -36,7 +36,10 @@
           <input type="checkbox" name="select" value="{{ p.id }}"
                  {% if p.id in checked %}checked{% endif %} aria-label="Select {{ p.name }}">
         </td>
-        <td>{{ p.name }}{% if not p.barcode %} <span class="chip chip-lpg">new code</span>{% endif %}</td>
+        <td>
+          {{ p.name }}{% if not p.barcode %} <span class="chip chip-lpg">new code</span>{% endif %}
+          {% if p.name_ne %}<div class="label-name-ne-hint">{{ p.name_ne }}</div>{% endif %}
+        </td>
         <td>{{ p.weighed_group or "—" }}</td>
         <td class="num">{{ p.price | rs }}/{{ p.unit }}</td>
         <td>
