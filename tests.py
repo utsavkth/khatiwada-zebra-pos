@@ -20,6 +20,7 @@ import tempfile
 
 from datetime import date as _date
 
+from itsdangerous import URLSafeTimedSerializer
 from PIL import Image
 from werkzeug.security import check_password_hash
 
@@ -40,6 +41,11 @@ if hasattr(sys.stdout, "reconfigure"):
 # app.py calls db.init_db() at import time, so the DB paths must be set first.
 # The admin password is no longer an env var — it's set via the first-run flow.
 _TMP = tempfile.mkdtemp(prefix="nepalpos-test-")
+
+# SSO handoff env vars must be set before importing app.py too — it reads
+# them at module level (see the "SaaS pilot SSO handoff" section in app.py).
+os.environ["HANDOFF_SECRET"] = "test-handoff-secret"
+os.environ["STORE_ID"] = "teststore"
 
 import db  # noqa: E402
 
@@ -899,6 +905,69 @@ def run():
           'id="save-cart-btn"' in page and 'id="confirm-sale-btn"' in page)
     check("weight pad has a preset chip row", 'id="weight-presets"' in page)
     check("Quick Add has the measured-in (kg/litre) picker", 'id="quick-add-unit"' in page)
+
+    # ---------------------------------------------------------------
+    section("SaaS pilot — /sso-login handoff receiving route")
+    handoff = URLSafeTimedSerializer("test-handoff-secret", salt="pos-saas-sso-handoff")
+    good_token = handoff.dumps({"store_id": "teststore", "subdomain": "teststore"})
+
+    resp = client.get(f"/sso-login?token={good_token}", follow_redirects=False)
+    check("valid token -> redirect to cashier", resp.status_code == 302 and resp.headers["Location"] == "/", resp.status_code)
+    with client.session_transaction() as sess:
+        check("session stamped as sso_authenticated", sess.get("sso_authenticated") is True)
+
+    wrong_store_token = handoff.dumps({"store_id": "someone-elses-store", "subdomain": "x"})
+    resp = client.get(f"/sso-login?token={wrong_store_token}")
+    check("token minted for a different store_id -> 403", resp.status_code == 403, resp.status_code)
+
+    tampered = good_token[:-1] + ("a" if good_token[-1] != "a" else "b")
+    resp = client.get(f"/sso-login?token={tampered}")
+    check("tampered token -> 400", resp.status_code == 400, resp.status_code)
+
+    resp = client.get("/sso-login?token=not-a-real-token")
+    check("garbage token -> 400, not a 500", resp.status_code == 400, resp.status_code)
+
+    resp = client.get("/sso-login")
+    check("missing token -> 400, not a 500", resp.status_code == 400, resp.status_code)
+
+    # ---------------------------------------------------------------
+    section("SaaS pilot — portal route gating (only active once PORTAL_LOGIN_URL is set)")
+    # HANDOFF_SECRET/STORE_ID are already set (module-level, above); the gate
+    # additionally requires PORTAL_LOGIN_URL, so toggling just that here
+    # proves the real Pi/Tailscale deployment (which never sets it) is
+    # unaffected, while a fully-configured SaaS container is gated.
+    app_module.PORTAL_LOGIN_URL = "https://possaas.chickenkiller.com/login"
+
+    with client.session_transaction() as sess:
+        sess.pop("sso_authenticated", None)
+
+    resp = client.get("/", follow_redirects=False)
+    check("cashier redirects to the portal login when not authenticated",
+          resp.status_code == 302 and resp.headers["Location"] == app_module.PORTAL_LOGIN_URL,
+          resp.status_code)
+
+    resp = client.get("/api/products/quick-taps", follow_redirects=False)
+    check("api routes are gated too when not authenticated", resp.status_code == 302, resp.status_code)
+
+    resp = client.get("/favicon.ico")
+    check("favicon stays exempt from gating", resp.status_code == 200, resp.status_code)
+
+    resp = client.get(f"/sso-login?token={good_token}", follow_redirects=False)
+    check("sso-login route itself stays reachable while gated", resp.status_code == 302, resp.status_code)
+
+    with client.session_transaction() as sess:
+        sess["sso_authenticated"] = True
+    resp = client.get("/", follow_redirects=False)
+    check("cashier loads normally once sso_authenticated is set", resp.status_code == 200, resp.status_code)
+
+    resp = client.get("/admin", follow_redirects=False)
+    check("admin routes are exempt from the portal gate — not sent to the portal login",
+          resp.status_code == 302 and resp.headers.get("Location") != app_module.PORTAL_LOGIN_URL,
+          resp.headers.get("Location"))
+
+    with client.session_transaction() as sess:
+        sess.pop("sso_authenticated", None)
+    app_module.PORTAL_LOGIN_URL = None  # restore — real deployment never sets this
 
     # ---------------------------------------------------------------
     print(f"\n{'='*40}\n{_passed} passed, {_failed} failed\n{'='*40}")
