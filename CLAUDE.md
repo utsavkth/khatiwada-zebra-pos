@@ -251,6 +251,23 @@ app explicitly accepted pen-and-paper during outages — its v1 decision
     through for real instead of re-prompting, covering the case where
     something (e.g. stale Admin history) was behind base after all.
 
+## Secondary deployment: POS SaaS pilot mock tenant (mirrors nepal-pos's own such section)
+
+This image also runs as a mock customer container ("customer2") on a separate Oracle Cloud VPS, exposed
+publicly at `https://possaas-c2.chickenkiller.com` — part of commercializing the (separate) `nepal-pos`
+codebase as a multi-tenant SaaS product (see the Notion page "💰 Commercialize the POS — SaaS Pilot Plan",
+id `39f144bf-7aa3-81f6-ab60-de69715835f8`). Completely unrelated to this repo's real purpose (the Zebra
+TC53 handheld, Pi-deployed, Tailscale-accessed) — flagging it here only because it's the same codebase.
+
+As of 2026-07-23, added `/sso-login` (in `app.py`, guarded by `HANDOFF_SECRET`/`STORE_ID`/`PORTAL_LOGIN_URL`
+env vars — all unset in the real Pi deployment, so the route 501s there and the `before_request` gate never
+activates, changing nothing for the real deployment): verifies the short-lived signed handoff token minted by
+the separate `pos-saas-accounts` backend's `/login`, stamps `session["sso_authenticated"]`, and — once
+`PORTAL_LOGIN_URL` is also set — gates every route except `/sso-login` itself, static/media/favicon, and
+`/admin/*` (own separate password gate) behind that session. Mirrors `nepal-pos`'s identical addition
+(2026-07-22/23) exactly, including the exempt-endpoints list and test structure. 12 new tests added to
+`tests.py`; all 234 tests pass.
+
 ## Database schema
 
 Identical to the original app (Nepal Grocery POS) — see that project's

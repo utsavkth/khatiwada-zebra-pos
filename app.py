@@ -27,6 +27,7 @@ from flask import (
     session,
     url_for,
 )
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -175,6 +176,59 @@ def cashier():
     """The Zebra TC53 handheld cashier — DataWedge keyboard-wedge scanning
     into an always-focused input; no camera."""
     return render_template("zebra.html")
+
+
+# --- SaaS pilot SSO handoff --------------------------------------------------
+# Mirrors nepal-pos's own "SaaS pilot SSO handoff" section — see that repo's
+# app.py and CLAUDE.md for the full rationale. Receives the short-lived token
+# minted by pos-saas-accounts' /login (the Notion SaaS Pilot Plan's
+# "Authentication Handoff Sequence"). HANDOFF_SECRET/STORE_ID/PORTAL_LOGIN_URL
+# are all unset for the real Pi/Tailscale deployment, so none of this
+# activates there — that deployment's no-cashier-login design (this repo has
+# no equivalent of nepal-pos's decision 3/4, but the same reality holds: the
+# cashier has zero auth by design, Tailscale is the trust boundary) is
+# completely unchanged. Only the separate VPS mock tenant (all three env vars
+# set) gets the route gating below.
+HANDOFF_SECRET = os.environ.get("HANDOFF_SECRET")
+STORE_ID = os.environ.get("STORE_ID")
+PORTAL_LOGIN_URL = os.environ.get("PORTAL_LOGIN_URL")
+_handoff_serializer = (
+    URLSafeTimedSerializer(HANDOFF_SECRET, salt="pos-saas-sso-handoff") if HANDOFF_SECRET else None
+)
+
+_PORTAL_GATE_EXEMPT_ENDPOINTS = {"sso_login", "favicon", "product_image", "static"}
+
+
+@app.before_request
+def _require_portal_session():
+    if _handoff_serializer is None or not STORE_ID or not PORTAL_LOGIN_URL:
+        return None
+    if request.endpoint is None:
+        return None
+    if request.endpoint in _PORTAL_GATE_EXEMPT_ENDPOINTS:
+        return None
+    if request.endpoint.startswith("admin"):
+        return None  # the internal Admin Portal has its own separate password gate
+    if session.get("sso_authenticated"):
+        return None
+    return redirect(PORTAL_LOGIN_URL)
+
+
+@app.route("/sso-login")
+def sso_login():
+    if _handoff_serializer is None or not STORE_ID:
+        return "SSO is not configured for this container.", 501
+
+    try:
+        payload = _handoff_serializer.loads(request.args.get("token", ""), max_age=60)
+    except BadSignature:
+        return "Invalid or expired login link. Please log in again from the main site.", 400
+
+    if payload.get("store_id") != STORE_ID:
+        return "This login link is not valid for this store.", 403
+
+    session["sso_authenticated"] = True
+    return redirect(url_for("cashier"))
 
 
 @app.route("/api/products/search")
