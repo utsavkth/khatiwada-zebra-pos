@@ -268,6 +268,11 @@ the separate `pos-saas-accounts` backend's `/login`, stamps `session["sso_authen
 (2026-07-22/23) exactly, including the exempt-endpoints list and test structure. 12 new tests added to
 `tests.py`; all 234 tests pass.
 
+**`STORE_NAME` env var (added 2026-07-23, mirrors `nepal-pos`'s identical addition):** overrides the
+"Khatiwada Store" branding hardcoded throughout the templates — defaults to "Khatiwada Store" when unset, so
+the real Pi/Tailscale deployment is unaffected. Injected via `inject_store_name`
+(`@app.context_processor`). Set by `pos-saas-accounts/scripts/provision_customer.sh`'s third argument.
+
 ## Database schema
 
 Identical to the original app (Nepal Grocery POS) — see that project's
