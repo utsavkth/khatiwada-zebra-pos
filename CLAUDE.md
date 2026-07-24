@@ -273,6 +273,11 @@ the separate `pos-saas-accounts` backend's `/login`, stamps `session["sso_authen
 the real Pi/Tailscale deployment is unaffected. Injected via `inject_store_name`
 (`@app.context_processor`). Set by `pos-saas-accounts/scripts/provision_customer.sh`'s third argument.
 
+**`scope="admin"` on the handoff token (added 2026-07-24, mirrors `nepal-pos`'s identical addition):** a token
+decoding with `"scope": "admin"` stamps `session["admin"]` and redirects to `/admin` instead of the cashier —
+lets the Master Dashboard's "Access admin" button into this store's internal Admin Portal via a 60-second
+signed token, not a permanent shared password. No-scope tokens behave exactly as before.
+
 ## Database schema
 
 Identical to the original app (Nepal Grocery POS) — see that project's
