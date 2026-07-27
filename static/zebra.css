@@ -10,11 +10,16 @@
    --brand/--accent tokens (which the admin portal and the future Chromebook
    register view keep using as-is — see the handoff's implementation note 1). */
 :root {
-  --z-primary: #2563eb;        /* blue-600 — handheld primary action colour */
-  --z-primary-dark: #1d4ed8;   /* blue-700 */
-  --z-primary-soft: #eff6ff;   /* blue-50 — readouts, icon-button backgrounds */
-  --z-primary-border: #bfdbfe; /* blue-200 */
-  --z-focus-ring: #dbeafe;     /* blue-100 — wedge input / field focus ring */
+  /* Repointed to the pos-saas-landing/style.css terracotta palette
+     (2026-07-27) for full brand consistency across every device --
+     previously a deliberately separate blue "Signal" direction from the
+     2026-07 design handoff, explicitly reconsidered and confirmed by the
+     user rather than overridden silently. */
+  --z-primary: #B5502C;        /* landing terracotta -- handheld primary action colour */
+  --z-primary-dark: #954025;
+  --z-primary-soft: #F3E3D3;   /* landing cream-2 -- readouts, icon-button backgrounds */
+  --z-primary-border: #E8C5AE;
+  --z-focus-ring: #F3E3D3;     /* wedge input / field focus ring */
   --radius: 10px;              /* tightened from the shared 14px for density */
   --radius-sm: 8px;
 }
@@ -88,7 +93,7 @@
 .z-datetime {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #8FA298; /* landing's muted-text-on-dark-green tone, was cool slate */
   white-space: nowrap;
   min-width: 0;
   overflow: hidden;
@@ -136,7 +141,7 @@
   width: var(--touch);
   height: var(--touch);
   flex-shrink: 0;
-  border: 2px dashed #93c5fd;
+  border: 2px dashed var(--z-primary-border);
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--z-primary);
@@ -410,7 +415,7 @@
 /* ---- Quick Add / Save-cart form fields ---- */
 
 .field { gap: 5px; }
-.field > span { font-size: 0.82rem; font-weight: 700; color: #334155; }
+.field > span { font-size: 0.82rem; font-weight: 700; color: var(--ink); }
 .field input, .field select {
   min-height: 48px;
   font-size: 0.95rem;
