@@ -6,9 +6,15 @@
 <title>Admin login — {{ store_name }}</title>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
 </head>
 <body class="login-body">
 <form method="post" class="login-box">
+  <div class="login-brand">
+    <img src="{{ url_for('static', filename='kpos-icon.png') }}" alt="" width="40" height="40">
+    <span>POS</span>
+  </div>
   <h1>{{ store_name }} Admin</h1>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   <label for="password">Password</label>
