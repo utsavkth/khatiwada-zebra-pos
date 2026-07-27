@@ -275,7 +275,10 @@ td.actions .button.small:hover, td.actions button.small:hover {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(135deg, #2F4B3C 0%, #1A2B22 100%);
+  background-image: url('login-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 .login-box {
   background: #fff;
@@ -288,8 +291,24 @@ td.actions .button.small:hover, td.actions button.small:hover {
   max-width: 100%;
   box-shadow: var(--shadow-lg);
 }
+/* Icon+wordmark lockup -- see nepal-pos's matching admin.css for the full
+   reasoning (K icon + real "POS" text, not AI-generated lettering). */
+.login-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.login-brand img { flex-shrink: 0; }
+.login-brand span {
+  font-family: 'Baloo 2', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
 .login-box h1 { font-size: 1.35rem; text-align: center; margin-bottom: 6px; }
-.login-box h1::before { content: "🛒 "; }
 .login-box label { font-weight: 600; }
 .back-link { display: block; text-align: center; margin-top: 4px; color: var(--accent); text-decoration: none; font-weight: 600; }
 .back-link:hover { text-decoration: underline; }
