@@ -4,19 +4,25 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --ink: #0f172a;          /* slate-900 */
-  --muted: #64748b;        /* slate-500 */
-  --accent: #2563eb;       /* blue-600 (legacy links) */
-  --brand: #16a34a;        /* green-600 — primary action colour (redesign) */
-  --brand-dark: #15803d;   /* green-700 */
-  --brand-soft: #f0fdf4;   /* green-50 */
-  --green: #059669;
-  --red: #dc2626;
-  --border: #e5e7eb;
+  /* Palette matched to the pos-saas-landing marketing site (2026-07-27),
+     same mapping as static/style.css -- see that file for the full
+     reasoning. Category badge colours (chip-grocery/lpg/etc.) are left
+     untouched since they're a distinct functional colour-coding, not part
+     of the primary brand palette. */
+  --ink: #2B2019;          /* landing ink */
+  --header: #2F4B3C;       /* landing green -- dark sidebar */
+  --muted: #6B5D4F;        /* landing brown */
+  --accent: #B5502C;       /* landing terracotta (legacy links) */
+  --brand: #B5502C;        /* landing terracotta — primary action colour */
+  --brand-dark: #954025;
+  --brand-soft: #F3E3D3;
+  --green: #3E5C4B;        /* landing green-light */
+  --red: #dc2626;          /* unchanged: danger/destructive signal */
+  --border: #E8DDC9;       /* landing tan-border */
   --radius: 12px;
-  --shadow-sm: 0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.08);
-  --shadow-md: 0 4px 14px rgba(15,23,42,.08), 0 2px 6px rgba(15,23,42,.05);
-  --shadow-lg: 0 18px 45px rgba(15,23,42,.28);
+  --shadow-sm: 0 1px 2px rgba(43,32,25,.06), 0 1px 3px rgba(43,32,25,.08);
+  --shadow-md: 0 4px 14px rgba(43,32,25,.08), 0 2px 6px rgba(43,32,25,.05);
+  --shadow-lg: 0 18px 45px rgba(43,32,25,.28);
 }
 
 body {
@@ -34,7 +40,7 @@ body {
 .admin-sidebar {
   width: 236px;
   flex-shrink: 0;
-  background: #0f172a;
+  background: var(--header);
   display: flex;
   flex-direction: column;
   padding: 16px 12px;
@@ -74,7 +80,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #64748b;
+  color: #8FA298; /* landing's muted-text-on-dark-green tone, was cool slate */
   padding: 14px 10px 6px;
 }
 .side-link {
@@ -83,15 +89,15 @@ body {
   gap: 8px;
   padding: 8px 10px;
   border-radius: 7px;
-  color: #cbd5e1;
+  color: #C9D3CB; /* landing's text-on-dark-green tone, was cool slate */
   font-weight: 500;
   font-size: 0.9rem;
   text-decoration: none;
   transition: background .12s, color .12s;
 }
-.side-link:hover { background: #1e293b; color: #fff; }
+.side-link:hover { background: #3E5C4B; color: #fff; }
 .side-link.active { background: var(--brand); color: #fff; font-weight: 700; }
-.side-back { color: #94a3b8; font-weight: 600; margin-bottom: 10px; }
+.side-back { color: #8FA298; font-weight: 600; margin-bottom: 10px; }
 
 .admin-main { flex: 1; min-width: 0; max-width: 1040px; padding: 28px 32px; }
 
@@ -141,8 +147,8 @@ button:active, .button:active { transform: translateY(1px); }
 button.small, .button.small { padding: 5px 11px; font-size: 0.85rem; }
 button.danger { background: var(--red); }
 button.danger:hover { background: #b91c1c; }
-.button.secondary { background: #64748b; }
-.button.secondary:hover { background: #475569; }
+.button.secondary { background: var(--muted); }
+.button.secondary:hover { background: #4A3E32; }
 
 input, select {
   padding: 9px 12px;
@@ -269,7 +275,7 @@ td.actions .button.small:hover, td.actions button.small:hover {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(135deg, #14532d 0%, #0f172a 100%);
+  background: linear-gradient(135deg, #2F4B3C 0%, #1A2B22 100%);
 }
 .login-box {
   background: #fff;

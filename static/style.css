@@ -5,30 +5,38 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 :root {
+  /* Palette matched to the pos-saas-landing marketing site for brand
+     consistency (2026-07-27) -- cream/terracotta/green instead of the
+     previous slate/blue/green scheme. --success is a new, separate
+     variable so the scan/checkout buttons and the weighed-category tiles
+     keep their green regardless of what --brand is (type-colour coding
+     stays: weighed=green, LPG=orange, pinned=indigo -- decision 17). */
   --panel: #ffffff;
-  --ink: #0f172a;          /* slate-900 */
-  --header: #0f172a;       /* dark app header (redesign) */
-  --muted: #64748b;        /* slate-500 */
-  --accent: #2563eb;       /* blue-600 */
-  --accent-dark: #1d4ed8;  /* blue-700 */
-  --accent-soft: #eff6ff;  /* blue-50 */
-  --brand: #16a34a;        /* green-600 — primary action colour (redesign) */
-  --brand-dark: #15803d;   /* green-700 */
-  --brand-soft: #f0fdf4;   /* green-50 */
-  --green: #059669;        /* emerald-600 */
-  --green-dark: #047857;   /* emerald-700 */
-  --green-soft: #ecfdf5;   /* emerald-50 */
-  --red: #dc2626;          /* red-600 */
-  --red-soft: #fef2f2;     /* red-50 */
-  --amber: #ea580c;        /* orange-600 */
-  --amber-dark: #c2410c;   /* orange-700 */
-  --border: #e2e8f0;       /* slate-200 */
+  --ink: #2B2019;          /* landing ink */
+  --header: #2F4B3C;       /* landing green -- dark app header */
+  --muted: #6B5D4F;        /* landing brown */
+  --accent: #B5502C;       /* landing terracotta */
+  --accent-dark: #954025;  /* landing terracotta-dark */
+  --accent-soft: #F3E3D3;  /* landing cream-2 */
+  --brand: #B5502C;        /* landing terracotta -- primary action colour */
+  --brand-dark: #954025;
+  --brand-soft: #F3E3D3;
+  --success: #22c55e;      /* kept as-is: dedicated confirm/success green */
+  --success-dark: #15803d;
+  --green: #3E5C4B;        /* landing green-light -- secondary green text (prices) */
+  --green-dark: #2F4B3C;   /* landing green */
+  --green-soft: #E4EAE5;   /* landing green-mist */
+  --red: #dc2626;          /* unchanged: danger/destructive signal */
+  --red-soft: #fef2f2;
+  --amber: #ea580c;        /* unchanged: warning/caution signal */
+  --amber-dark: #c2410c;
+  --border: #E8DDC9;       /* landing tan-border */
   --radius: 14px;
   --radius-sm: 10px;
   --touch: 56px; /* minimum touch target */
-  --shadow-sm: 0 1px 2px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.08);
-  --shadow-md: 0 4px 14px rgba(15,23,42,.08), 0 2px 6px rgba(15,23,42,.05);
-  --shadow-lg: 0 18px 45px rgba(15,23,42,.28);
+  --shadow-sm: 0 1px 2px rgba(43,32,25,.06), 0 1px 3px rgba(43,32,25,.08);
+  --shadow-md: 0 4px 14px rgba(43,32,25,.08), 0 2px 6px rgba(43,32,25,.05);
+  --shadow-lg: 0 18px 45px rgba(43,32,25,.28);
 }
 
 html, body {
@@ -101,7 +109,7 @@ html, body {
 .header-datetime {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #8FA298; /* landing's muted-text-on-dark-green tone, was cool slate */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -113,10 +121,10 @@ html, body {
   gap: 6px;
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid #334155;
+  border: 1px solid #3E5C4B; /* landing green-light, was cool slate */
   border-radius: 999px;
   background: transparent;
-  color: #e2e8f0;
+  color: #C9D3CB; /* landing's text-on-dark-green tone, was cool slate */
   font-weight: 700;
   font-size: 0.95rem;
   text-decoration: none;
@@ -124,8 +132,8 @@ html, body {
   font-family: inherit;
   transition: background .15s;
 }
-.admin-link:hover, .lang-toggle:hover { background: #1e293b; }
-.admin-link:active, .lang-toggle:active { background: #334155; }
+.admin-link:hover, .lang-toggle:hover { background: #3E5C4B; }
+.admin-link:active, .lang-toggle:active { background: #24392E; }
 
 .top-row {
   display: flex;
@@ -149,7 +157,7 @@ html, body {
 .btn:disabled { opacity: 0.5; box-shadow: none; cursor: default; transform: none; filter: none; }
 
 .btn-scan {
-  background: linear-gradient(180deg, #22c55e, var(--brand-dark));
+  background: linear-gradient(180deg, var(--success), var(--success-dark));
   flex-shrink: 0;
 }
 
@@ -167,7 +175,7 @@ html, body {
 #search-input:focus {
   outline: none;
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+  box-shadow: 0 0 0 3px rgba(181,80,44,.18);
 }
 
 .search-results {
@@ -229,7 +237,7 @@ html, body {
 .quick-taps .tap:active { transform: translateY(1px) scale(0.99); filter: brightness(0.93); }
 /* Type-colour coding stays (weighed=green, LPG=orange, pinned=indigo — decision 17),
    tuned to the redesign palette. */
-.quick-taps .tap-weighed { background: linear-gradient(155deg, #22c55e, var(--brand-dark)); }
+.quick-taps .tap-weighed { background: linear-gradient(155deg, var(--success), var(--success-dark)); }
 .quick-taps .tap-lpg { background: linear-gradient(155deg, #fb923c, var(--amber-dark)); }
 .quick-taps .tap-pinned { background: linear-gradient(155deg, #6366f1, #4338ca); }
 /* Media square on each tile: an emoji icon (weighed category), a product photo,
@@ -249,7 +257,7 @@ html, body {
 /* No-photo tiles (weighed categories, products without a picture): a solid
    white badge with a dark initial — always renders, high contrast, and matches
    the white photo squares so the grid stays uniform. */
-.tap-media.letter { background: #fff; color: #0f172a; border-color: rgba(255,255,255,.85); }
+.tap-media.letter { background: #fff; color: var(--ink); border-color: rgba(255,255,255,.85); }
 /* Category tiles carry a white icon badge; the glyph takes the tile's colour. */
 .tap-media.icon { background: #fff; border-color: rgba(255,255,255,.85); }
 .tap-media svg { width: 30px; height: 30px; display: block; }
@@ -394,10 +402,10 @@ html, body {
 }
 .bill-total-row strong { font-size: 1.9rem; color: var(--ink); letter-spacing: -0.02em; }
 .btn-new-sale {
-  background: linear-gradient(180deg, #22c55e, var(--brand-dark));
+  background: linear-gradient(180deg, var(--success), var(--success-dark));
   font-size: 1.3rem;
   min-height: 66px;
-  box-shadow: 0 4px 12px rgba(22,163,74,.25);
+  box-shadow: 0 4px 12px rgba(181,80,44,.25);
 }
 
 /* ---- Modals ---- */
@@ -433,7 +441,7 @@ html, body {
 
 .modal-actions { display: flex; gap: 10px; }
 .modal-actions .btn { flex: 1; }
-.btn-cancel { background: #64748b; }
+.btn-cancel { background: var(--muted); }
 .btn-danger-solid { background: var(--red); }
 
 /* Duplicate warning — deliberately loud so staff notice before adding a copy */
@@ -447,7 +455,7 @@ html, body {
   border-radius: var(--radius);
   padding: 12px 14px;
 }
-.btn-ok { background: linear-gradient(180deg, #22c55e, var(--brand-dark)); }
+.btn-ok { background: linear-gradient(180deg, var(--success), var(--success-dark)); }
 
 /* Weight pad */
 .weight-display {
@@ -539,7 +547,7 @@ html, body {
 .field input:focus, .field select:focus {
   outline: none;
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+  box-shadow: 0 0 0 3px rgba(181,80,44,.18);
 }
 .field select {
   min-height: var(--touch);
@@ -611,7 +619,7 @@ html, body {
 .scanner-manual-row input:focus {
   outline: none;
   border-color: var(--brand);
-  box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+  box-shadow: 0 0 0 3px rgba(181,80,44,.18);
 }
 .scanner-manual-row .btn { flex-shrink: 0; }
 
