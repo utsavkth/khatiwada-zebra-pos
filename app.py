@@ -1,4 +1,4 @@
-"""Flask app for Zebra POS v2 (Khatiwada Store) — the Zebra TC53 handheld cashier.
+"""Flask app for Zebra POS v2 (Khatiwada Store): the Zebra TC53 handheld cashier.
 
 Backend copied from the proven Nepal Grocery POS app (same schema, same live
 database via the shared Docker volume; WAL mode lives in db.py). The cashier
@@ -39,7 +39,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
 # Product photos live on the HDD next to the databases (data/images/), not in
-# the DB — see the "future phase — product images" note in CLAUDE.md. Only the
+# the DB, see the "future phase, product images" note in CLAUDE.md. Only the
 # filename is stored on the product row; the file is served via /media/<name>.
 IMAGES_DIR = os.path.join(db.DATA_DIR, "images")
 os.makedirs(IMAGES_DIR, exist_ok=True)
@@ -49,7 +49,7 @@ IMAGE_MAX_PX = 400  # thumbnails; keeps the cashier fast over Tailscale
 
 CATEGORIES = ["grocery", "weighed", "lpg", "stationery", "cosmetics", "other"]
 UNITS = ["kg", "litre", "piece", "packet", "bottle"]
-# Units a measured (is_weighed) product can use — drives the quantity pad label.
+# Units a measured (is_weighed) product can use, drives the quantity pad label.
 MEASURE_UNITS = ["kg", "litre"]
 # Categories offered for a fixed-price Quick Add (weighed items are categorised
 # by the weighed-group picker instead). Extend CATEGORIES / this list to add more.
@@ -184,18 +184,18 @@ def service_worker():
 
 @app.route("/")
 def cashier():
-    """The Zebra TC53 handheld cashier — DataWedge keyboard-wedge scanning
+    """The Zebra TC53 handheld cashier: DataWedge keyboard-wedge scanning
     into an always-focused input; no camera."""
     return render_template("zebra.html")
 
 
 # --- SaaS pilot SSO handoff --------------------------------------------------
-# Mirrors nepal-pos's own "SaaS pilot SSO handoff" section — see that repo's
+# Mirrors nepal-pos's own "SaaS pilot SSO handoff" section. See that repo's
 # app.py and CLAUDE.md for the full rationale. Receives the short-lived token
 # minted by pos-saas-accounts' /login (the Notion SaaS Pilot Plan's
 # "Authentication Handoff Sequence"). HANDOFF_SECRET/STORE_ID/PORTAL_LOGIN_URL
 # are all unset for the real Pi/Tailscale deployment, so none of this
-# activates there — that deployment's no-cashier-login design (this repo has
+# activates there. That deployment's no-cashier-login design (this repo has
 # no equivalent of nepal-pos's decision 3/4, but the same reality holds: the
 # cashier has zero auth by design, Tailscale is the trust boundary) is
 # completely unchanged. Only the separate VPS mock tenant (all three env vars
@@ -240,7 +240,7 @@ def sso_login():
 
     session["sso_authenticated"] = True
     if payload.get("scope") == "admin":
-        # Master Dashboard's "Access admin" -- grants the same session the
+        # Master Dashboard's "Access admin" grants the same session the
         # store's own admin password would, via a short-lived signed token
         # instead of a permanent shared password across every customer (see
         # pos-saas-accounts' admin_access_customer_admin route).
@@ -267,7 +267,7 @@ def api_product_by_barcode(barcode):
 
 @app.route("/api/catalog")
 def api_catalog():
-    """The full active catalog plus the quick-tap structure, in one payload —
+    """The full active catalog plus the quick-tap structure, in one payload,
     mirrored into IndexedDB by the cashier while online so scanning, name
     search and the quick-tap buttons keep working through an outage."""
     return jsonify({
@@ -379,7 +379,7 @@ def api_sync_sales():
     """Idempotent import for the cashier's offline outbox. Accepts a batch of
     sales, each carrying a client-generated UUID and the Kathmandu date/time
     the sale actually happened. A UUID that has been imported before is
-    acknowledged as a duplicate without writing anything — so flaky
+    acknowledged as a duplicate without writing anything, so flaky
     reconnections, retries, and lost responses can never double-record a
     sale. The cashier sends ONLINE sales through here too (a batch of one)
     for the same reason."""
@@ -662,7 +662,7 @@ def admin_duplicates_cleanup():
 
 # Scanning depends on codes never containing a space (zebra.js's handleWedgeEnter
 # treats any space-free value as an exact-barcode candidate first, falling back
-# to name search otherwise) — kept intentionally narrower than that one rule so
+# to name search otherwise), kept intentionally narrower than that one rule so
 # every code is also guaranteed printable/typeable and Code128-safe.
 LABEL_CODE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
@@ -690,10 +690,10 @@ def admin_labels():
                     break
                 if not LABEL_CODE_RE.match(code):
                     error = (f'"{p["name"]}"\'s code can only use letters, numbers, '
-                             f"hyphens and underscores (no spaces) — scanning depends on it.")
+                             f"hyphens and underscores (no spaces). Scanning depends on it.")
                     break
                 if code in seen:
-                    error = f'"{p["name"]}" and "{seen[code]}" both use the code {code} — codes must be unique.'
+                    error = f'"{p["name"]}" and "{seen[code]}" both use the code {code}. Codes must be unique.'
                     break
                 dup = db.find_duplicate_product(None, barcode=code, exclude_id=p["id"])
                 if dup:
@@ -711,7 +711,7 @@ def admin_labels():
         overrides = {}
         for p in products:
             overrides[p["id"]] = p["barcode"] or barcode_labels.suggest_code(p["name"], existing)
-        # Pre-check only products still missing a code — reprinting an
+        # Pre-check only products still missing a code. Reprinting an
         # already-labelled item is deliberate (staff tick it themselves),
         # not the default, so a routine visit to this page can't waste stickers.
         checked = {p["id"] for p in products if not p["barcode"]}
@@ -823,7 +823,7 @@ def admin_group_delete(group_id):
     if not group:
         return "Group not found.", 404
     db.delete_group(group_id)
-    flash(f"Deleted group {group['name']} — its products were kept, just un-grouped.")
+    flash(f"Deleted group {group['name']}. Its products were kept, just un-grouped.")
     return redirect(url_for("admin_groups"))
 
 

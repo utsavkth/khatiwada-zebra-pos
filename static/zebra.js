@@ -1,8 +1,8 @@
-/* Zebra POS v2 — handheld cashier screen for the Zebra TC53 (/zebra).
+/* Zebra POS v2: handheld cashier screen for the Zebra TC53 (/zebra).
    Two scan paths run side by side, deduped against each other (see
-   processScannedValue below): DataWedge keyboard-wedge — the scanner types
+   processScannedValue below): DataWedge keyboard-wedge (the scanner types
    the barcode into whatever is focused and sends Enter, so the page keeps an
-   always-focused input (#wedge-input) — and, when running inside Zebra
+   always-focused input (#wedge-input)), and, when running inside Zebra
    Enterprise Browser, its native EB.Barcode JS API, which fires a clean
    callback with no focused input needed at all. No camera scanner on this
    screen either way. Shares the live database with the original cashier via
@@ -19,7 +19,7 @@ let cartName = ""; // optional customer label, set when a cart is saved/resumed
    catalog and an outbox of sales that couldn't reach the server; the
    functions below keep both in sync and are the fallback path whenever a
    fetch fails. Read-only lookups (barcode/name/quick-taps) fall back to the
-   mirror; Quick Add (creating a brand-new product) does NOT — that needs the
+   mirror; Quick Add (creating a brand-new product) does NOT. That needs the
    server's live duplicate-check and group list, so it stays online-only
    (recorded as a known offline degradation in CLAUDE.md). */
 
@@ -102,13 +102,13 @@ async function flushSalesOutbox() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sales: queued }),
     });
-    if (!res.ok) return; // network came back but server errored — try again later
+    if (!res.ok) return; // network came back but server errored, try again later
     const { results } = await res.json();
     const settled = results.filter((r) => r.status === "imported" || r.status === "duplicate")
       .map((r) => r.client_uuid);
     if (settled.length) await ZebraOffline.removeQueuedSales(settled);
   } catch {
-    // still offline in practice (e.g. captive portal) — leave the outbox queued
+    // still offline in practice (e.g. captive portal), leave the outbox queued
   } finally {
     refreshOfflineBadge();
   }
@@ -156,7 +156,7 @@ function showToast(msg, ms = 1800) {
 
 /* ---- Wedge input focus management ----
    The scanner only works while #wedge-input is focused, so after every tap or
-   closed modal the focus snaps back — unless the user is genuinely typing in
+   closed modal the focus snaps back, unless the user is genuinely typing in
    another field (Quick Add name, cart name) or a modal is open. */
 
 const wedgeInput = document.getElementById("wedge-input");
@@ -177,7 +177,7 @@ window.addEventListener("focus", refocusWedge);
 
 /* ---- Typing mode (Android soft keyboard on demand) ----
    The wedge input carries inputmode="none" so the constant refocusing never
-   pops Android's soft keyboard — DataWedge injects key events regardless of
+   pops Android's soft keyboard. DataWedge injects key events regardless of
    keyboard visibility. The keyboard button flips the input to typing mode
    for a hand-typed name search; any completed action drops back to scan
    mode. The blur/focus bounce is what makes Android re-read inputmode. */
@@ -269,7 +269,7 @@ function renderBill() {
     edit.className = "bill-line-edit";
     edit.type = "button";
     edit.setAttribute("aria-label", "Change price of " + line.product_name);
-    edit.textContent = "✎";
+    edit.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
     edit.addEventListener("click", () => openPriceOverride(idx));
 
     const remove = document.createElement("button");
@@ -294,7 +294,7 @@ function renderBill() {
   confirmBtn.disabled = bill.length === 0;
   document.getElementById("save-cart-btn").disabled = bill.length === 0;
   document.getElementById("clear-bill-btn").disabled = bill.length === 0;
-  document.getElementById("cart-name-label").textContent = cartName ? " — " + cartName : "";
+  document.getElementById("cart-name-label").textContent = cartName ? " · " + cartName : "";
 }
 
 function billTotal() {
@@ -317,7 +317,7 @@ function addToBill(product, quantity) {
     }
   }
   bill.push({
-    product_name: product.name,       // canonical English — saved on the sale
+    product_name: product.name,       // canonical English, saved on the sale
     name_ne: product.name_ne || null, // optional Nepali display name
     quantity: quantity,
     unit_price: product.price,
@@ -330,7 +330,7 @@ function addToBill(product, quantity) {
 }
 
 /* ---- Barcode lookup (the proven scan flow, fed by the wedge input) ----
-   Found -> add to cart (or the quantity pad if is_weighed — scanning a shelf
+   Found -> add to cart (or the quantity pad if is_weighed, scanning a shelf
    label for a weighed variety is a fast path to the SAME pad the category
    picker opens, per CLAUDE.md decision 3). Not found -> Quick Add auto-opens
    with the barcode attached, same as the original cashier. */
@@ -360,8 +360,8 @@ async function handleWedgeEnter(value) {
     res = await fetch("/api/products/barcode/" + encodeURIComponent(value));
   } catch {
     // Offline: fall back to the mirrored catalog. A genuine miss can't open
-    // Quick Add here — creating a product needs the server's live
-    // duplicate-check and group list — so it's reported, not silently opened.
+    // Quick Add here, creating a product needs the server's live
+    // duplicate-check and group list, so it's reported, not silently opened.
     const offlineProduct = offlineBarcodeLookup(value);
     if (offlineProduct) {
       clearWedge();
@@ -387,21 +387,21 @@ async function handleWedgeEnter(value) {
 /* ---- Native Enterprise Browser scan API (EB.Barcode) ----------------------
    Zebra Enterprise Browser injects its own JS API (ebapi-modules.js +
    elements.js) into every page when Config.xml has InjectEBLibraries/
-   JSLibraries=1 (already set in this repo's Config.xml) — EB.Barcode.enable()
+   JSLibraries=1 (already set in this repo's Config.xml). EB.Barcode.enable()
    fires a clean callback the instant a scan happens, no focused input or
    keystroke-timing heuristics needed. Feature-detected: only used when
    actually running inside Enterprise Browser; a plain Chrome tab (nothing
    injects EB.* there) just never enables it and keeps using the keyboard-
    wedge path below unchanged.
 
-   This is ADDITIVE, not a replacement — deliberately. It can't be verified
+   This is ADDITIVE, not a replacement, deliberately. It can't be verified
    from Sydney whether this device's Enterprise Browser (Config.xml has
    usedwforscanning=1, i.e. scanning routed through DataWedge under the hood)
    ALSO independently fires DataWedge's keyboard-wedge keystrokes into the
    focused input for the very same physical trigger pull. If it does, both
    paths would fire within milliseconds of each other for one scan.
    processScannedValue() below gates every scan-string arrival (from either
-   path) through a short dedupe window — long enough to catch a same-instant
+   path) through a short dedupe window: long enough to catch a same-instant
    double-fire, short enough to never block a genuinely fast deliberate
    re-scan of the same item a moment later. Needs on-device confirmation:
    does EB.Barcode fire at all here, and if so, does the keyboard-wedge path
@@ -429,7 +429,7 @@ function tryEnableNativeScanApi(attemptsLeft = 8) {
         if (value) processScannedValue(value);
       });
     } catch {
-      // EB.Barcode existed but enable() failed for some reason — fall through
+      // EB.Barcode existed but enable() failed for some reason, fall through
       // silently, the keyboard-wedge path below still works regardless.
     }
     return;
@@ -449,13 +449,13 @@ function clearWedge() {
   wedgeInput.value = "";
   searchResults.hidden = true;
   searchResults.innerHTML = "";
-  if (typingMode) setTypingMode(false); // done typing — back to scan mode
+  if (typingMode) setTypingMode(false); // done typing, back to scan mode
 }
 
 wedgeInput.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   e.preventDefault();
-  clearTimeout(scanIdleTimer); // Enter resolves the scan — don't fire it twice
+  clearTimeout(scanIdleTimer); // Enter resolves the scan, don't fire it twice
   const value = wedgeInput.value.trim();
   if (!value) return;
   processScannedValue(value);
@@ -501,7 +501,7 @@ wedgeInput.addEventListener("input", () => {
         inputTimes = [];
         if (value) processScannedValue(value);
       }, SCAN_IDLE_MS);
-      return; // scan in progress — no live search on top of it
+      return; // scan in progress, no live search on top of it
     }
   }
 
@@ -522,7 +522,7 @@ async function runNameSearch(q) {
     renderSearchResults(products, q);
   } catch {
     // Offline: search the mirrored catalog instead. Unlike the online path, a
-    // miss doesn't offer "add it now" — Quick Add needs the server.
+    // miss doesn't offer "add it now". Quick Add needs the server.
     renderSearchResults(offlineNameSearch(q), q, true);
   }
 }
@@ -750,7 +750,7 @@ function openWeightPad(product) {
   weightProduct = product;
   weightStr = "";
   document.getElementById("weight-title").textContent =
-    productDisplayName(product.name, product.name_ne) + " — " + formatRs(product.price) + perUnit(product.unit);
+    productDisplayName(product.name, product.name_ne) + " · " + formatRs(product.price) + perUnit(product.unit);
   document.getElementById("weight-unit").textContent = unitName(product.unit);
   updateWeightDisplay();
   weightModal.hidden = false;
@@ -980,7 +980,7 @@ async function saveQuickAddProduct(force) {
 
 function showDuplicateWarning(existing) {
   document.getElementById("dup-existing").textContent =
-    `${existing.name} — ${formatRs(existing.price)}` +
+    `${existing.name} · ${formatRs(existing.price)}` +
     (existing.barcode ? ` · ${existing.barcode}` : "") + ` (${t("dupAlreadyExists")})`;
   duplicateModal.hidden = false;
 }
@@ -995,7 +995,7 @@ document.getElementById("dup-add-anyway").addEventListener("click", () => {
 /* ---- Saved (parked) carts ----
    Serve-two-customers-at-once: park the running cart under a customer name,
    start fresh, tap the chip to bring it back. Stored per device in
-   localStorage — parked carts are unfinished business, never sent to the
+   localStorage. Parked carts are unfinished business, never sent to the
    server (only a confirmed sale is saved, same as the original cashier). */
 
 const PARKED_KEY = "zebra_parked_carts";
@@ -1091,9 +1091,9 @@ const paymentModal = document.getElementById("payment-modal");
 
 /* Render the QR the customer scans to pay `saleTotal`.
 
-   TODO(fonepay-dynamic-qr) — SWAP POINT: this is the ONLY place the QR comes
+   TODO(fonepay-dynamic-qr): SWAP POINT. This is the ONLY place the QR comes
    from. Today it shows the shop's static Fonepay QR (a photo of the real
-   terminal QR saved at static/fonepay-static-qr.jpg — never generate one
+   terminal QR saved at static/fonepay-static-qr.jpg, never generate one
    programmatically, only Fonepay's system can produce valid QR data). Once
    Fonepay Dynamic QR API credentials arrive (blocked on the bank/Fonepay,
    tracked in Notion), replace the body of this function with a call to a new
@@ -1109,7 +1109,7 @@ function renderPaymentQr(saleTotal) {
   img.src = "/static/fonepay-static-qr.jpg";
   img.alt = "Fonepay QR";
   img.addEventListener("error", () => {
-    // The real QR photo hasn't been dropped into static/ yet — say so instead
+    // The real QR photo hasn't been dropped into static/ yet, say so instead
     // of showing a broken image. Staff can still take cash and confirm.
     area.innerHTML = "";
     const note = document.createElement("p");
@@ -1149,7 +1149,7 @@ async function finalizeSale() {
   // client-generated UUID: the same idempotent path either way means a lost
   // response or a flaky reconnect can never double-record the sale, and a
   // network failure just means it queues in the outbox instead of blocking
-  // the till — staff need to keep serving customers through an outage.
+  // the till. Staff need to keep serving customers through an outage.
   const sale = { client_uuid: newClientUuid(), date, time, items };
   const okBtn = document.getElementById("payment-received");
   okBtn.disabled = true;
@@ -1197,7 +1197,7 @@ setInterval(updateHeaderClock, 15000);
 
 /* ---- Android back button: close layers, confirm before leaving the till --
    On the TC53 (capacitive key or gesture) "back" is a history pop. With only
-   one history entry that pop leaves the app — a trap when all the user wanted
+   one history entry that pop leaves the app, a trap when all the user wanted
    was to dismiss a modal. Pattern: keep exactly ONE sentinel entry pushed
    above the real entry at all times. A back press pops the sentinel; the
    popstate handler then closes the topmost open layer (modal → payment step →
@@ -1205,19 +1205,19 @@ setInterval(updateHeaderClock, 15000);
 
    When NOTHING is open, back opens an explicit exit-confirm prompt (bold,
    both languages, see #exit-confirm-modal) instead of silently leaving OR
-   silently doing nothing — either extreme is confusing on a shared till a
+   silently doing nothing. Either extreme is confusing on a shared till a
    non-technical family member is using. A silent no-op used to be the fix
    here, but it's indistinguishable from "the back button doesn't work" to
    someone actually trying to leave, and there was never a fully reliable
    way to prove from Sydney that no code path could still pop past the
-   sentinel on a real device — Admin's normal <a href> link back to the
+   sentinel on a real device. Admin's normal <a href> link back to the
    cashier means a staff member who visited Admin earlier in the session has
    real history sitting behind the base entry, and Android's own back stack
    for an installed/standalone PWA isn't entirely a JS-side concern once
    history genuinely runs out. An explicit prompt is the honest answer
    either way: staff always get a clear choice, never a surprise. Tapping
-   "Close app" can't force a single-tap exit — there's no reliable web API
-   for that on an installed PWA — so it best-effort pops two entries AND
+   "Close app" can't force a single-tap exit. There's no reliable web API
+   for that on an installed PWA, so it best-effort pops two entries AND
    arms a short window where the NEXT physical back press is let through
    for real, with a toast saying so. No history calls happen during normal
    modal open/close, so there are no async popstate races. */
@@ -1225,8 +1225,8 @@ setInterval(updateHeaderClock, 15000);
 // Topmost first: the duplicate warning stacks ON TOP of Quick Add, so it must
 // be dismissed first. Each entry reuses the modal's own cancel/back button so
 // back behaves exactly like tapping Cancel (state reset + wedge refocus).
-// exit-confirm-modal is last since it can never stack with the others — it
-// only opens when nothing else is — but back on IT must also just cancel.
+// exit-confirm-modal is last since it can never stack with the others: it
+// only opens when nothing else is, but back on IT must also just cancel.
 const BACK_LAYERS = [
   { modal: "duplicate-modal", cancel: "dup-cancel" },
   { modal: "payment-modal", cancel: "payment-back" },
@@ -1268,11 +1268,11 @@ document.getElementById("exit-confirm-close").addEventListener("click", () => {
   allowExit = true;
   clearTimeout(allowExitTimer);
   allowExitTimer = setTimeout(() => { allowExit = false; }, 5000);
-  // Bilingual, always both languages — same reasoning as the modal itself.
+  // Bilingual, always both languages, same reasoning as the modal itself.
   showToast("Press Back once more to close / बन्द गर्न फेरि Back थिच्नुहोस्", 3000);
   // Best-effort immediate close: pops the sentinel AND the base entry in one
   // step. If nothing real is behind base (the common case, a fresh launch),
-  // Android finishes the activity here — done in one tap. If something IS
+  // Android finishes the activity here, done in one tap. If something IS
   // behind it (e.g. stale Admin history), this only partially pops and the
   // allowExit window + toast above cover it: one more physical back press
   // within 5s will be let through instead of re-prompting.
@@ -1287,7 +1287,7 @@ if (!history.state || !history.state.zebra) {
   history.replaceState({ zebra: "base" }, "");
   armBackSentinel();
 } else if (history.state.zebra === "base") {
-  // Landed back on the base entry (e.g. returning from Admin) — re-arm.
+  // Landed back on the base entry (e.g. returning from Admin), re-arm.
   armBackSentinel();
 }
 
@@ -1296,10 +1296,10 @@ window.addEventListener("pageshow", (e) => {
 });
 
 window.addEventListener("popstate", () => {
-  // Forward navigation back onto the sentinel — nothing to do.
+  // Forward navigation back onto the sentinel, nothing to do.
   if (history.state && history.state.zebra === "sentinel") return;
   if (allowExit) {
-    // The user already confirmed via "Close app" — let this pop stand for
+    // The user already confirmed via "Close app". Let this pop stand for
     // real instead of re-arming or re-prompting. One-shot: consumed here.
     allowExit = false;
     clearTimeout(allowExitTimer);
@@ -1307,7 +1307,7 @@ window.addEventListener("popstate", () => {
   }
   if (closeTopLayer()) {
     // Closed a modal (or the exit-confirm prompt itself, via its own Cancel
-    // button — see BACK_LAYERS) — stay, re-arm.
+    // button, see BACK_LAYERS), stay, re-arm.
     armBackSentinel();
     return;
   }
@@ -1329,7 +1329,7 @@ refreshOfflineBadge();
 wedgeInput.focus();
 
 // navigator.onLine and the "online" event mostly reflect "network interface
-// up", not "server actually reachable" — a periodic catalog refresh + outbox
+// up", not "server actually reachable". A periodic catalog refresh + outbox
 // flush is the real safety net; the online/offline listeners above just make
 // the common Wi-Fi-drops-then-returns case feel instant.
 setInterval(() => {

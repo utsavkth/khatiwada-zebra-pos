@@ -6,16 +6,16 @@
 </div>
 
 <p class="hint">
-  Shelf-label barcodes for weighed products (rice, dal, sugar…) — print, cut
+  Shelf-label barcodes for weighed products (rice, dal, sugar, etc). Print, cut
   out, and stick on the bin. Scanning the label opens the weight pad directly,
   a faster alternative to tapping through the category picker. Each code is
   auto-suggested from the product name; edit any of them before printing.
 </p>
 
-{% if error %}<p class="error">⚠️ {{ error }}</p>{% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
 
 {% if not products %}
-  <p class="hint">No weighed products yet — add some under
+  <p class="hint">No weighed products yet. Add some under
     <a href="{{ url_for('admin_products') }}">Products</a> first.</p>
 {% else %}
 <form method="post" id="labels-form">
@@ -40,7 +40,7 @@
           {{ p.name }}{% if not p.barcode %} <span class="chip chip-lpg">new code</span>{% endif %}
           {% if p.name_ne %}<div class="label-name-ne-hint">{{ p.name_ne }}</div>{% endif %}
         </td>
-        <td>{{ p.weighed_group or "—" }}</td>
+        <td>{{ p.weighed_group or "N/A" }}</td>
         <td class="num">{{ p.price | rs }}/{{ p.unit }}</td>
         <td>
           <input type="text" name="barcode_{{ p.id }}" value="{{ overrides[p.id] }}"

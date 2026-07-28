@@ -22,13 +22,13 @@
   </thead>
   <tbody>
     <tr>
-      <td>{{ g.keep.id }}</td><td>{{ g.keep.name }}</td><td>{{ g.keep.barcode or "—" }}</td>
+      <td>{{ g.keep.id }}</td><td>{{ g.keep.name }}</td><td>{{ g.keep.barcode or "N/A" }}</td>
       <td class="num">{{ g.keep.price | rs }}</td><td>{{ "active" if g.keep.active else "inactive" }}</td>
       <td><strong>Keep</strong></td>
     </tr>
     {% for p in g.remove %}
     <tr class="inactive">
-      <td>{{ p.id }}</td><td>{{ p.name }}</td><td>{{ p.barcode or "—" }}</td>
+      <td>{{ p.id }}</td><td>{{ p.name }}</td><td>{{ p.barcode or "N/A" }}</td>
       <td class="num">{{ p.price | rs }}</td><td>{{ "active" if p.active else "inactive" }}</td>
       <td>Remove</td>
     </tr>

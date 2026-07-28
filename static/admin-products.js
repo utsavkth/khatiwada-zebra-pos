@@ -1,4 +1,4 @@
-/* Admin product list — live, as-you-type search (client-side) plus instant
+/* Admin product list: live, as-you-type search (client-side) plus instant
    category filtering. Text search filters the rows already on the page with no
    reload; changing the category reloads with that category applied server-side,
    carrying the current search text along so it isn't lost. */
@@ -28,7 +28,7 @@
   }
   // Changing the category reloads with just that category (server-side).
   if (category) category.addEventListener("change", () => { if (form) form.submit(); });
-  // Enter shouldn't reload the page — the list already filters live.
+  // Enter shouldn't reload the page. The list already filters live.
   if (form) form.addEventListener("submit", (e) => { e.preventDefault(); applyFilter(); });
   // "Clear" resets both without a round-trip (unless there's a server-side
   // category applied, in which case the link's href reloads to the full list).

@@ -1,12 +1,12 @@
 """Bikram Sambat (Nepali) calendar conversion for the admin sales reports.
 
-Python port of the table + anchor in `static/nepali-date.js` — keep the two in
+Python port of the table + anchor in `static/nepali-date.js`. Keep the two in
 sync. Data is the authoritative medic/bikram-sambat month-length table; anchor
 BS 2081-01-01 = 2024-04-13 AD (Nepali New Year 2081), verified self-consistent.
 Covers BS 2078–2090 (AD ~2021–2033); dates outside the table return None.
 
 Admin reports show BS dates in English script (romanized month names, Western
-digits) — the admin panel stays English-only per CLAUDE.md decision 15; this
+digits). The admin panel stays English-only per CLAUDE.md decision 15; this
 adds the Nepali *calendar system*, not a UI translation.
 """
 

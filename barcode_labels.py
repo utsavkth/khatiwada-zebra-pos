@@ -2,7 +2,7 @@
 Code128 labels staff stick on shelf bins as a faster alternative to the
 category -> variety tap-through picker. The scan-side lookup already treats
 any space-free scanned value as an exact-barcode candidate first
-(zebra.js handleWedgeEnter) and opens the weight pad on a weighed match — this
+(zebra.js handleWedgeEnter) and opens the weight pad on a weighed match. This
 module only produces the code strings and the printable barcode graphic for
 the admin "Print labels" page.
 
@@ -20,7 +20,7 @@ def suggest_code(name, existing_codes):
     """A readable, unique shelf-label code from a product name, e.g.
     "Basmati Rice" -> "WT-BASMATI-RICE". existing_codes is the set of codes
     already spoken for (in the DB, or suggested earlier in this same request)
-    — mutated in place so repeated calls never collide with each other."""
+    (mutated in place so repeated calls never collide with each other)."""
     slug = re.sub(r"[^A-Z0-9]+", "-", name.upper()).strip("-")
     slug = re.sub(r"-{2,}", "-", slug) or "ITEM"
     base = f"WT-{slug}"[:40]
@@ -34,7 +34,7 @@ def suggest_code(name, existing_codes):
 
 
 def render_svg(code):
-    """An inline, embeddable Code128 SVG for `code`, bars only — the template
+    """An inline, embeddable Code128 SVG for `code`, bars only. The template
     renders the code as its own HTML text under the bars so its styling
     matches the rest of the label instead of relying on the SVG's font."""
     bc = _barcode.get("code128", code, writer=SVGWriter())

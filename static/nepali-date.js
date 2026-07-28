@@ -100,7 +100,7 @@ function formatCashierHeader(lang) {
   const { y, m, d, weekday, time } = kathmanduNowParts();
   const bs = gregorianToBS(y, m, d);
   const timeStr = ne ? toDevanagari(time) : time;
-  if (!bs) return timeStr; // out of table range — show time only
+  if (!bs) return timeStr; // out of table range, show time only
   const months = ne ? BS_MONTHS_NE : BS_MONTHS_EN;
   const weekdays = ne ? WEEKDAYS_NE : WEEKDAYS_EN;
   const yr = ne ? toDevanagari(bs.year) : bs.year;

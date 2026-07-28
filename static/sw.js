@@ -7,13 +7,13 @@
      dead connection falls back to the cached shell in seconds rather than
      however long the OS/browser takes to give up on a real TCP/DNS attempt
      (observed on-device: several minutes, not the near-instant failure a
-     laptop dev-tools "offline" toggle gives — the difference between "no
-     network interface" and "network up but nothing answers", which is the
-     realistic shape of a Tailscale/Pi outage).
-   - /static/*: cache-first — every static URL carries a ?v= content hash
+     laptop dev-tools "offline" toggle gives. That's the difference between
+     "no network interface" and "network up but nothing answers", which is
+     the realistic shape of a Tailscale/Pi outage).
+   - /static/*: cache-first. Every static URL carries a ?v= content hash
      (see app.py cache-busting), so a cached response is immutable; new
      deploys produce new URLs and old entries are pruned on activate.
-   - /media/* (product photos): cache-first — uploads get a unique filename
+   - /media/* (product photos): cache-first. Uploads get a unique filename
      per save, so these are immutable too.
    - /api/*: network only, never cached. Offline behaviour for API data is
      handled in app code against the IndexedDB catalog mirror (offline.js),
@@ -28,8 +28,8 @@ const FETCH_TIMEOUT_MS = 4000;
    Hash-versioned asset URLs are cached at runtime on first use.
 
    Cached individually (not cache.addAll, which is all-or-nothing: one slow
-   or flaky fetch — over Tailscale to Sydney, on first install, the QR jpg
-   is the biggest single file here — used to fail the ENTIRE install, so
+   or flaky fetch, over Tailscale to Sydney, on first install, the QR jpg
+   is the biggest single file here, used to fail the ENTIRE install, so
    NOTHING got cached and the app had no offline shell at all). A precache
    miss here is not fatal: the fonepay QR and icons also get cached
    opportunistically by cacheFirst() the first time they're actually
@@ -100,7 +100,7 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/admin")) return;
 
   if (event.request.mode === "navigate" || url.pathname === "/") {
-    // All navigations fall back to the cached shell — the cashier is the
+    // All navigations fall back to the cached shell. The cashier is the
     // only page this app needs to open offline.
     event.respondWith(networkFirst(event.request, "/"));
     return;

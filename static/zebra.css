@@ -1,4 +1,4 @@
-/* Zebra POS v2 — layout + "Signal" visual refresh for the Zebra TC53 handheld
+/* Zebra POS v2: layout + "Signal" visual refresh for the Zebra TC53 handheld
    (6" 1080x2160 portrait, ~412 CSS px wide). Loaded AFTER style.css and ONLY on
    the zebra cashier page: it reuses style.css's modals, numpad, bill lines,
    search results and tile structure, then restyles them to the "Signal"
@@ -8,16 +8,16 @@
 /* Zebra-scoped design tokens. This file is only linked from zebra.html, so
    overriding here restyles the handheld WITHOUT repointing style.css's shared
    --brand/--accent tokens (which the admin portal and the future Chromebook
-   register view keep using as-is — see the handoff's implementation note 1). */
+   register view keep using as-is, see the handoff's implementation note 1). */
 :root {
   /* Repointed to the pos-saas-landing/style.css terracotta palette
-     (2026-07-27) for full brand consistency across every device --
-     previously a deliberately separate blue "Signal" direction from the
+     (2026-07-27) for full brand consistency across every device.
+     Previously a deliberately separate blue "Signal" direction from the
      2026-07 design handoff, explicitly reconsidered and confirmed by the
      user rather than overridden silently. */
-  --z-primary: #B5502C;        /* landing terracotta -- handheld primary action colour */
+  --z-primary: #B5502C;        /* landing terracotta, handheld primary action colour */
   --z-primary-dark: #954025;
-  --z-primary-soft: #F3E3D3;   /* landing cream-2 -- readouts, icon-button backgrounds */
+  --z-primary-soft: #F3E3D3;   /* landing cream-2, readouts, icon-button backgrounds */
   --z-primary-border: #E8C5AE;
   --z-focus-ring: #F3E3D3;     /* wedge input / field focus ring */
   --radius: 10px;              /* tightened from the shared 14px for density */
@@ -39,13 +39,13 @@
            max(10px, env(safe-area-inset-bottom))
            max(10px, env(safe-area-inset-left));
   /* Three-layer height fallback, weakest to strongest support:
-     100vh (oldest, but on mobile Chrome this is the LARGEST possible size —
+     100vh (oldest, but on mobile Chrome this is the LARGEST possible size,
      as if the address bar were already hidden, which is wrong on first paint
      and is exactly what clipped the footer buttons inside a normal Chrome
      tab: the address bar is still on screen, dvh should shrink around it but
      real-world Android Chrome can lag/mis-time that on first paint before any
      scroll) -> 100svh (small viewport height, the GUARANTEED-safe floor that
-     always assumes the address bar is showing — never clips, worst case a
+     always assumes the address bar is showing, never clips, worst case a
      few px of unused space once the bar auto-hides) -> 100dvh (best case:
      tracks the address bar live once Chrome has settled). Installed/
      standalone launches have no address bar to begin with, so this only
@@ -60,8 +60,8 @@
 /* ---- Header ---- */
 
 /* Dark slate header (same value as the shared --header/--ink): a deliberate
-   return to the original app's dark header for cross-device brand consistency
-   — this reverses the earlier "light header on the Zebra" choice on purpose
+   return to the original app's dark header for cross-device brand consistency.
+   This reverses the earlier "light header on the Zebra" choice on purpose
    (confirmed in the Signal design handoff). The base .lang-toggle/.admin-link
    pill styles from style.css are designed for a dark header, so they apply
    here unmodified apart from the touch-target bump below. */
@@ -151,7 +151,7 @@
 }
 .z-quick-add-btn:active { background: var(--z-primary-soft); }
 /* Keyboard toggle: opens the soft keyboard for a hand-typed name search
-   (the wedge input itself never summons it — inputmode="none"). */
+   (the wedge input itself never summons it, inputmode="none"). */
 .z-kb-btn {
   width: var(--touch);
   height: var(--touch);
@@ -185,7 +185,7 @@
   scrollbar-width: none;
 }
 .z-quick-taps::-webkit-scrollbar { display: none; }
-/* 92px minimum stays — one-handed tap target while walking (do not shrink). */
+/* 92px minimum stays, one-handed tap target while walking (do not shrink). */
 .z-quick-taps .tap {
   flex: 0 0 auto;
   min-width: 92px;
@@ -336,7 +336,7 @@
 .z-qr-missing { color: var(--muted); font-size: 0.95rem; padding: 20px 14px; }
 /* Keep breathing room below the hint: a future "payment confirmed
    automatically" state (checkmark + auto-advance) slots in here once the
-   Fonepay Dynamic QR API unblocks — do not build that state yet. */
+   Fonepay Dynamic QR API unblocks. Do not build that state yet. */
 .z-payment-hint { color: var(--muted); font-size: 0.86rem; line-height: 1.4; margin: 0; }
 
 /* ---- Weight/quantity pad + price override readouts (blue, not green) ---- */
@@ -375,7 +375,7 @@
 
 .numpad { gap: 8px; }
 .numpad button { min-height: 54px; font-size: 1.3rem; border-radius: 10px; }
-/* The price modal carries an extra "current price" line — slightly shorter
+/* The price modal carries an extra "current price" line, slightly shorter
    keys keep it on-screen without scrolling. */
 #price-modal .numpad button { min-height: 52px; font-size: 1.25rem; }
 .price-current { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
@@ -440,8 +440,8 @@
   border-radius: 10px;
 }
 
-/* Exit confirm: deliberately louder than every other modal — bold, both
-   languages always visible, red confirm action — this is the one prompt
+/* Exit confirm: deliberately louder than every other modal. Bold, both
+   languages always visible, red confirm action. This is the one prompt
    where being unmissable matters more than matching the rest of the UI. */
 .exit-confirm-box { text-align: center; gap: 10px; }
 .exit-confirm-title {

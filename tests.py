@@ -1,6 +1,6 @@
 """Full local scenario tests for Zebra POS v2 (Khatiwada Store).
 
-Adapted from the original Nepal Grocery POS suite — the backend/admin tests
+Adapted from the original Nepal Grocery POS suite. The backend/admin tests
 carry over unchanged (same schema, same APIs); the cashier-page checks target
 the Zebra keyboard-wedge page, which is this app's root.
 
@@ -39,10 +39,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 # --- Isolate the database BEFORE importing the app -------------------------
 # app.py calls db.init_db() at import time, so the DB paths must be set first.
-# The admin password is no longer an env var — it's set via the first-run flow.
+# The admin password is no longer an env var, it's set via the first-run flow.
 _TMP = tempfile.mkdtemp(prefix="nepalpos-test-")
 
-# SSO handoff env vars must be set before importing app.py too — it reads
+# SSO handoff env vars must be set before importing app.py too, it reads
 # them at module level (see the "SaaS pilot SSO handoff" section in app.py).
 os.environ["HANDOFF_SECRET"] = "test-handoff-secret"
 os.environ["STORE_ID"] = "teststore"
@@ -72,7 +72,7 @@ def check(label, condition, detail=""):
         print(f"  PASS  {label}")
     else:
         _failed += 1
-        print(f"  FAIL  {label}" + (f"  — {detail}" if detail else ""))
+        print(f"  FAIL  {label}" + (f"  ({detail})" if detail else ""))
 
 
 def section(title):
@@ -119,7 +119,7 @@ def run():
     seed()
 
     # ---------------------------------------------------------------
-    section("Cashier — barcode lookup")
+    section("Cashier: barcode lookup")
     r = client.get("/api/products/barcode/1111111111111")
     check("known barcode returns product", r.status_code == 200 and r.get_json()["name"] == "Test Noodles")
     r = client.get("/api/products/barcode/0000000000000")
@@ -162,31 +162,31 @@ def run():
     check("back-button sentinel is wired (popstate closes layers)",
           "popstate" in zebra_js and "armBackSentinel" in zebra_js and "closeTopLayer" in zebra_js)
     check("back with nothing open never silently pops past the sentinel (regression: used "
-          "to surface stale Admin history — Admin links back to / with a normal <a href>, "
+          "to surface stale Admin history: Admin links back to / with a normal <a href>, "
           "so a staff member who visited Admin earlier landed back on admin/login on a "
           "plain back press). Only the explicit exit-confirm 'Close app' tap may leave, "
           "via history.go(-2), never a bare history.back()", "history.back()" not in zebra_js)
     with open(os.path.join(os.path.dirname(__file__), "templates", "admin_base.html"), encoding="utf-8") as f:
         admin_base = f.read()
-    check("Admin links back to the cashier with a normal push (not history-replacing) — "
-          "relies on back-with-nothing-open never silently exiting, not on how this link "
+    check("Admin links back to the cashier with a normal push (not history-replacing). "
+          "Relies on back-with-nothing-open never silently exiting, not on how this link "
           "navigates", "url_for('cashier')" in admin_base)
     check("back with nothing open asks before leaving instead of silently exiting OR "
           "silently doing nothing (a silent no-op is indistinguishable from a broken "
           "back button to someone actually trying to leave)",
           "exit-confirm-modal" in page and "exitConfirmModal" in zebra_js)
-    check("exit-confirm prompt shows BOTH languages at once, not gated by the toggle — "
-          "a rare, consequential moment any staff member must understand immediately",
+    check("exit-confirm prompt shows BOTH languages at once, not gated by the toggle. "
+          "A rare, consequential moment any staff member must understand immediately",
           "Close the app?" in page and "एप बन्द गर्ने हो?" in page)
     check("exit-confirm is itself back-dismissable like every other modal (in BACK_LAYERS, "
-          "cancel button wired) — pressing back on the prompt cancels it, not confirms it",
+          "cancel button wired). Pressing back on the prompt cancels it, not confirms it",
           '"exit-confirm-modal"' in zebra_js and "exit-confirm-cancel" in zebra_js)
-    check("closing needs an explicit tap, not a bare history pop — confirmed via a "
+    check("closing needs an explicit tap, not a bare history pop. Confirmed via a "
           "one-shot allowExit flag consumed exactly once in the popstate handler",
           "allowExit" in zebra_js and "history.go(-2)" in zebra_js)
 
     # ---------------------------------------------------------------
-    section("Native Enterprise Browser scan API (EB.Barcode) — additive, deduped")
+    section("Native Enterprise Browser scan API (EB.Barcode): additive, deduped")
     check("EB.Barcode is feature-detected, not assumed (a plain Chrome tab has no EB.* "
           "injected, so this must never throw there)",
           "typeof EB !== \"undefined\"" in zebra_js and "EB.Barcode" in zebra_js)
@@ -194,12 +194,12 @@ def run():
           "Enterprise Browser injects its own API into the DOM with no guaranteed timing "
           "relative to this script)",
           "tryEnableNativeScanApi" in zebra_js and "attemptsLeft" in zebra_js)
-    check("EB.Barcode.enable() is wrapped in try/catch — a failure here must fall through "
+    check("EB.Barcode.enable() is wrapped in try/catch. A failure here must fall through "
           "silently, never break the proven keyboard-wedge path",
           "EB.Barcode.enable({}" in zebra_js)
     check("both scan entry points (Enter keypress, burst-detection timer) funnel through "
-          "the same dedupe gate as the native scan callback, not straight to handleWedgeEnter "
-          "— guards against EB.Barcode and DataWedge keyboard-wedge both firing for one "
+          "the same dedupe gate as the native scan callback, not straight to handleWedgeEnter. "
+          "Guards against EB.Barcode and DataWedge keyboard-wedge both firing for one "
           "physical scan, unconfirmed on-device either way",
           zebra_js.count("processScannedValue(value)") >= 3)
     check("dedupe window is short enough to never block a genuinely fast deliberate "
@@ -219,12 +219,12 @@ def run():
     check("service worker never intercepts /api/* (offline fallback is app-level, not per-URL)",
           "/api/" in sw and "startsWith(\"/api/\")" in sw)
     check("precache is resilient per-URL, not all-or-nothing (regression: cache.addAll is "
-          "atomic — one slow/flaky asset, e.g. the Fonepay QR jpg over Tailscale on first "
+          "atomic. One slow/flaky asset, e.g. the Fonepay QR jpg over Tailscale on first "
           "install, used to fail the WHOLE install and cache nothing at all)",
           "cache.addAll(PRECACHE)" not in sw and "allSettled" in sw)
     check("network attempts are timeout-wrapped (regression: a dead-but-connected network, "
           "e.g. Tailscale/Pi down while WiFi stays up, made a bare fetch() hang for minutes "
-          "on-device before falling back to cache — 'site cannot be reached' for 2-3 min)",
+          "on-device before falling back to cache. 'site cannot be reached' for 2-3 min)",
           "fetchWithTimeout" in sw and "FETCH_TIMEOUT_MS" in sw)
     offline_js = client.get("/static/offline.js").get_data(as_text=True)
     check("offline.js exposes the catalog + outbox stores",
@@ -236,7 +236,7 @@ def run():
           "queueSale" in zebra_js and "flushSalesOutbox" in zebra_js and "/api/sales/sync" in zebra_js)
 
     # ---------------------------------------------------------------
-    section("Cashier — search by name and barcode")
+    section("Cashier: search by name and barcode")
     r = client.get("/api/products/search?q=cola")
     check("search by name (case-insensitive)", any(p["name"] == "Test Cola" for p in r.get_json()))
     r = client.get("/api/products/search?q=2222222222222")
@@ -247,7 +247,7 @@ def run():
     check("empty search returns nothing", r.get_json() == [])
 
     # ---------------------------------------------------------------
-    section("Cashier — quick-tap grouping")
+    section("Cashier: quick-tap grouping")
     data = client.get("/api/products/quick-taps").get_json()
     groups = {g["name"]: [p["name"] for p in g["products"]] for g in data["groups"]}
     check("Rice group has both rice varieties", set(groups.get("Rice", [])) == {"Basmati Rice", "Mansuli Rice"})
@@ -257,14 +257,14 @@ def run():
     check("groups carry a type flag", all("is_weighed" in g for g in data["groups"]))
 
     # ---------------------------------------------------------------
-    section("Cashier — Quick Add (fixed price)")
+    section("Cashier: Quick Add (fixed price)")
     r = client.post("/api/products/quick-add", json={"name": "Impulse Candy", "price": 5, "barcode": "9990001112223"})
     check("fixed quick-add returns 201", r.status_code == 201)
     prod = r.get_json()
     check("fixed quick-add is not weighed", prod["is_weighed"] == 0 and prod["category"] == "other")
     check("fixed quick-add persisted with barcode", db.get_product_by_barcode("9990001112223") is not None)
 
-    section("Cashier — Quick Add (weighed variety)")
+    section("Cashier: Quick Add (weighed variety)")
     r = client.post("/api/products/quick-add", json={
         "name": "Jeera Masino Rice", "price": 180, "is_weighed": True, "weighed_group": "Rice"})
     check("weighed quick-add returns 201", r.status_code == 201)
@@ -274,14 +274,14 @@ def run():
     rice = next(g["products"] for g in data["groups"] if g["name"] == "Rice")
     check("new variety appears under Rice button", any(p["name"] == "Jeera Masino Rice" for p in rice))
 
-    section("Cashier — Quick Add validation")
+    section("Cashier: Quick Add validation")
     check("missing name rejected", client.post("/api/products/quick-add", json={"price": 5}).status_code == 400)
     check("zero price rejected", client.post("/api/products/quick-add", json={"name": "X", "price": 0}).status_code == 400)
     check("bad weighed group rejected",
           client.post("/api/products/quick-add", json={"name": "Y", "price": 5, "is_weighed": True, "weighed_group": "Nope"}).status_code == 400)
 
     # ---------------------------------------------------------------
-    section("Cashier — save sale, price override, timezone")
+    section("Cashier: save sale, price override, timezone")
     r = client.post("/api/sales", json={"items": [
         {"product_name": "Test Noodles", "quantity": 2, "unit_price": 25},
         {"product_name": "Basmati Rice", "quantity": 1.5, "unit_price": 250},
@@ -301,14 +301,14 @@ def run():
     check("override recorded at overridden price", saved_item["unit_price"] == 20.0)
     check("override did NOT change stored product price", before == 25.0 and after == 25.0)
 
-    section("Cashier — sale validation")
+    section("Cashier: sale validation")
     check("empty items rejected", client.post("/api/sales", json={"items": []}).status_code == 400)
     check("missing fields rejected", client.post("/api/sales", json={"items": [{"product_name": "X"}]}).status_code == 400)
     check("negative quantity rejected",
           client.post("/api/sales", json={"items": [{"product_name": "X", "quantity": -1, "unit_price": 5}]}).status_code == 400)
 
     # ---------------------------------------------------------------
-    section("Cashier — offline catalog mirror (/api/catalog)")
+    section("Cashier: offline catalog mirror (/api/catalog)")
     catalog = client.get("/api/catalog").get_json()
     check("catalog carries the active product list",
           any(p["name"] == "Test Noodles" for p in catalog["products"]))
@@ -318,7 +318,7 @@ def run():
           {g["name"] for g in catalog["groups"]} == {g["name"] for g in data["groups"]})
 
     # ---------------------------------------------------------------
-    section("Cashier — offline sales outbox sync (/api/sales/sync)")
+    section("Cashier: offline sales outbox sync (/api/sales/sync)")
     before_items = _count_sale_items()
     uuid_a = "11111111-1111-1111-1111-111111111111"
     r = client.post("/api/sales/sync", json={"sales": [{
@@ -368,7 +368,7 @@ def run():
     check("empty batch rejected", client.post("/api/sales/sync", json={"sales": []}).status_code == 400)
 
     # ---------------------------------------------------------------
-    section("Admin — first-run set-password + authentication")
+    section("Admin: first-run set-password + authentication")
     # With no password stored yet, everything funnels to the setup screen.
     check("no password yet: /admin -> setup",
           client.get("/admin").headers.get("Location", "").endswith("/admin/setup"))
@@ -400,7 +400,7 @@ def run():
     check("correct password grants access to products", client.get("/admin/products").status_code == 200)
 
     # ---------------------------------------------------------------
-    section("Admin — products CRUD + soft delete")
+    section("Admin: products CRUD + soft delete")
     client.post("/admin/products/new", data={
         "name": "Marker Pen", "barcode": "", "category": "stationery", "price": "30", "unit": "piece"})
     pen = _product_by_name("Marker Pen")
@@ -424,7 +424,7 @@ def run():
     check("admin permanently deletes a product", r.status_code == 302 and db.get_product(junk["id"]) is None)
     check("delete of a missing product is a clean 404", client.post(f"/admin/products/{junk['id']}/delete").status_code == 404)
 
-    section("Admin — clean up existing duplicates")
+    section("Admin: clean up existing duplicates")
     # create 3 copies sharing a barcode + 2 copies sharing a name (no barcode)
     for _ in range(3):
         db.add_product(name="Hit 400ml", price=305, barcode="8901157025200", category="grocery")
@@ -444,7 +444,7 @@ def run():
     check("only one Loose Item remains", len(db.get_products(query="Loose Item")) == 1)
     check("no duplicate groups left", db.find_duplicate_groups() == [])
 
-    section("Cashier + Admin — duplicate guard")
+    section("Cashier + Admin: duplicate guard")
     client.post("/api/products/quick-add", json={"name": "Dup Candy", "price": 5, "barcode": "5550001112223"})
     # same name -> 409 duplicate
     r = client.post("/api/products/quick-add", json={"name": "Dup Candy", "price": 9})
@@ -465,7 +465,7 @@ def run():
     client.post("/admin/products/new", data={"name": "Marker Pen", "category": "stationery", "price": "30", "unit": "piece", "confirm_duplicate": "1"})
     check("admin 'add anyway' creates despite the duplicate", len(db.get_products(query="Marker Pen")) == before + 1)
 
-    section("Admin — optional per-product Nepali name (name_ne)")
+    section("Admin: optional per-product Nepali name (name_ne)")
     # add a product with a Nepali name via the admin form
     client.post("/admin/products/new", data={
         "name": "Basmati Rice", "name_ne": "बासमती चामल", "barcode": "",
@@ -488,7 +488,7 @@ def run():
         "name": "Plain Soap", "name_ne": "साबुन", "category": "grocery", "price": "40", "unit": "piece"})
     check("edit adds a Nepali name", db.get_product(ps["id"])["name_ne"] == "साबुन")
 
-    section("Cashier — pin a product as a one-tap button (#pin)")
+    section("Cashier: pin a product as a one-tap button (#pin)")
     # add a pinned fixed-price product via Quick Add
     r = client.post("/api/products/quick-add", json={"name": "Milk 500ml", "price": 55, "category": "grocery", "pinned": True})
     check("quick-add stores pinned flag", r.status_code == 201 and r.get_json().get("pinned") == 1)
@@ -514,7 +514,7 @@ def run():
     check("pinned weighed item excluded from pinned buttons",
           not any(p["name"] == "Pinned Weighed" for p in qt.get("pinned", [])))
 
-    section("Admin — weighed group auto-detect on add")
+    section("Admin: weighed group auto-detect on add")
     client.post("/admin/products/new", data={
         "name": "Salt", "barcode": "", "category": "weighed", "price": "45", "unit": "kg", "is_weighed": "1", "weighed_group": ""})
     salt = _product_by_name("Salt")
@@ -524,7 +524,7 @@ def run():
     check("Salt shows under Other group", any(p["name"] == "Salt" for p in other))
 
     # ---------------------------------------------------------------
-    section("Admin — shelf-label barcode printing (CLAUDE.md decision 3)")
+    section("Admin: shelf-label barcode printing (CLAUDE.md decision 3)")
     html = client.get("/admin/labels").get_data(as_text=True)
     check("labels page lists weighed products", "Basmati Rice" in html)
     check("labels page never lists fixed-price products", "Test Cola" not in html)
@@ -603,7 +603,7 @@ def run():
     check("print page with no valid ids redirects back instead of erroring", r.status_code == 302)
 
     # ---------------------------------------------------------------
-    section("Admin — products search & category filter")
+    section("Admin: products search & category filter")
     check("admin name search filters", b"Basmati Rice" in client.get("/admin/products?q=basmati").data)
     html = client.get("/admin/products?category=lpg").data
     check("admin category filter (lpg only)", b"LPG Refill" in html and b"Basmati Rice" not in html)
@@ -613,7 +613,7 @@ def run():
           b"admin-products.js" in html and b"data-search=" in html)
 
     # ---------------------------------------------------------------
-    section("Categories — cosmetics + extensibility")
+    section("Categories: cosmetics + extensibility")
     # Quick Add a fixed item with an explicit category
     r = client.post("/api/products/quick-add", json={"name": "Face Cream", "price": 180, "category": "cosmetics"})
     check("quick-add fixed item honours category", r.status_code == 201 and r.get_json()["category"] == "cosmetics")
@@ -633,7 +633,7 @@ def run():
           _product_by_name("Hardware Nail")["category"] == "hardware")
 
     # ---------------------------------------------------------------
-    section("Admin — reports (daily/weekly/monthly)")
+    section("Admin: reports (daily/weekly/monthly)")
     _insert_backdated_sale("2026-06-24", 500.0)   # different ISO week
     _insert_backdated_sale("2026-06-01", 700.0)   # different month
     rep = client.get("/admin/reports").data.decode()
@@ -648,7 +648,7 @@ def run():
     check("June total = 500 + 700 = 1200", round(months.get("2026-06", 0), 2) == 1200.0, str(months))
 
     # ---------------------------------------------------------------
-    section("Admin — Bikram Sambat dates in reports (#4)")
+    section("Admin: Bikram Sambat dates in reports (#4)")
     check("BS converter anchor 2024-04-13 -> 2081-01-01", nepali_date.to_bs(_date(2024, 4, 13)) == (2081, 1, 1))
     check("BS converter 2025-04-14 -> 2082-01-01", nepali_date.to_bs(_date(2025, 4, 14)) == (2082, 1, 1))
     check("BS date label 2026-07-04 -> '2083 Asar 20'", nepali_date.bs_date_label("2026-07-04") == "2083 Asar 20")
@@ -660,7 +660,7 @@ def run():
     check("reports render a converted BS date (2083 ...)", "2083 " in rep_bs)
 
     # ---------------------------------------------------------------
-    section("Admin — CSV export")
+    section("Admin: CSV export")
     r = client.get("/admin/sales/export.csv")
     check("export content-type is CSV", r.mimetype == "text/csv")
     check("export is an attachment", "attachment" in r.headers.get("Content-Disposition", ""))
@@ -670,7 +670,7 @@ def run():
     check("export has one row per line item", len(lines) - 1 == _count_sale_items())
 
     # ---------------------------------------------------------------
-    section("Admin — CSV import (insert / update / invalid / bad header)")
+    section("Admin: CSV import (insert / update / invalid / bad header)")
     good = (
         "barcode,name,category,price,is_weighed,unit\n"
         "3334445556667,Imported Soap,grocery,45,0,piece\n"        # new insert
@@ -695,7 +695,7 @@ def run():
     check("wrong header rejected", b"CSV header must be" in bad_header.data)
 
     # ---------------------------------------------------------------
-    section("Groups — user-defined cashier buttons")
+    section("Groups: user-defined cashier buttons")
     check("default groups seeded",
           all(n in db.group_names() for n in ["Rice", "Dal", "Sugar", "Flour", "Other", "LPG"]))
     # Create a new fixed-price group via admin, then file a product under it
@@ -735,7 +735,7 @@ def run():
           b"already exists" in client.post("/admin/groups/new", data={"name": "Pulses"}).data)
 
     # ---------------------------------------------------------------
-    section("Measured by litre — loose liquids (oil etc.)")
+    section("Measured by litre: loose liquids (oil etc.)")
     # Quick Add a measured litre product into a weighed-type group
     r = client.post("/api/products/quick-add", json={
         "name": "Loose Mustard Oil", "price": 265, "is_weighed": True,
@@ -777,9 +777,9 @@ def run():
         {"product_name": "Loose Mustard Oil", "quantity": 0.5, "unit_price": 265}]})
     check("half-litre sale totals correctly", r.status_code == 201 and r.get_json()["total"] == 132.5)
 
-    section("Migration — unit CHECK dropped, data preserved")
+    section("Migration: unit CHECK dropped, data preserved")
     # Simulate the deployed database, whose products table still has the old
-    # CHECK (unit IN ('kg','piece','packet','bottle')) — init must rebuild it
+    # CHECK (unit IN ('kg','piece','packet','bottle')). Init must rebuild it
     # without the CHECK, keep existing rows/ids, and then accept litre.
     import sqlite3 as _sqlite3
     _mig_dir = tempfile.mkdtemp(prefix="nepalpos-mig-")
@@ -824,7 +824,7 @@ def run():
         db.DATA_DIR, db.STORE_DB_PATH, db.SALES_DB_PATH = _old_paths
 
     # ---------------------------------------------------------------
-    section("Admin — product photos")
+    section("Admin: product photos")
     # Add a product with a photo (oversized image should be resized down).
     r = client.post("/admin/products/new",
                     data={"name": "Photo Rice", "category": "weighed", "price": "120",
@@ -871,7 +871,7 @@ def run():
     check("non-image upload leaves image_path empty", _product_by_name("Bad Photo")["image_path"] is None)
 
     # ---------------------------------------------------------------
-    section("Admin — change password")
+    section("Admin: change password")
     # (currently logged in with ADMIN_PW from the auth section)
     r = client.post("/admin/change-password", data={"current": "wrongpw12", "password": NEW_PW, "confirm": NEW_PW})
     check("wrong current password rejected", b"Current password is wrong" in r.data)
@@ -889,7 +889,7 @@ def run():
     check("new password logs in", client.get("/admin/products").status_code == 200)
 
     # ---------------------------------------------------------------
-    section("Static assets — cache-busting version param")
+    section("Static assets: cache-busting version param")
     page = client.get("/").data.decode()
     m = re.search(r'href="(/static/style\.css\?v=([0-9a-f]{8}))"', page)
     check("cashier stylesheet URL carries a ?v= content hash", m is not None, page[:200])
@@ -901,7 +901,7 @@ def run():
         check("version matches the file's content hash", m.group(2) == expected)
 
     # ---------------------------------------------------------------
-    section("Zebra cashier — payment step / saved carts / weight presets markup")
+    section("Zebra cashier: payment step / saved carts / weight presets markup")
     check("payment step shows the static Fonepay QR area",
           'id="payment-qr-area"' in page and 'id="payment-received"' in page and 'id="payment-total"' in page)
     check("cart footer has SAVE CART + CONFIRM SALE",
@@ -910,7 +910,7 @@ def run():
     check("Quick Add has the measured-in (kg/litre) picker", 'id="quick-add-unit"' in page)
 
     # ---------------------------------------------------------------
-    section("SaaS pilot — STORE_NAME overrides branding everywhere")
+    section("SaaS pilot: STORE_NAME overrides branding everywhere")
     cashier_page = client.get("/").get_data(as_text=True)
     check("cashier header shows the overridden store name", "Test Shop Co" in cashier_page)
     check("hardcoded 'Khatiwada Store' no longer present on cashier", "Khatiwada Store" not in cashier_page)
@@ -922,7 +922,7 @@ def run():
     check("admin sidebar brand shows the overridden store name", "Test Shop Co" in admin_page)
 
     # ---------------------------------------------------------------
-    section("SaaS pilot — /sso-login handoff receiving route")
+    section("SaaS pilot: /sso-login handoff receiving route")
     handoff = URLSafeTimedSerializer("test-handoff-secret", salt="pos-saas-sso-handoff")
     good_token = handoff.dumps({"store_id": "teststore", "subdomain": "teststore"})
 
@@ -935,7 +935,7 @@ def run():
     resp = client.get(f"/sso-login?token={wrong_store_token}")
     check("token minted for a different store_id -> 403", resp.status_code == 403, resp.status_code)
 
-    # Flip a character well before the end, not the last one or two — base64's
+    # Flip a character well before the end, not the last one or two, base64's
     # final characters can carry unused/padding bits, so some single-character
     # edits right at the end decode to the SAME bytes, making a last-char flip
     # flaky (~6% of the time) rather than reliably invalid.
@@ -953,7 +953,7 @@ def run():
     check("missing token -> 400, not a 500", resp.status_code == 400, resp.status_code)
 
     # ---------------------------------------------------------------
-    section("SaaS pilot — /sso-login with scope=admin (Master Dashboard 'Access admin')")
+    section("SaaS pilot: /sso-login with scope=admin (Master Dashboard 'Access admin')")
     admin_scope_token = handoff.dumps({"store_id": "teststore", "subdomain": "teststore", "scope": "admin"})
     resp = client.get(f"/sso-login?token={admin_scope_token}", follow_redirects=False)
     check("admin-scope token -> redirect to /admin (not the cashier)",
@@ -973,7 +973,7 @@ def run():
         check("no scope -> session[admin] not set", not sess.get("admin"))
 
     # ---------------------------------------------------------------
-    section("SaaS pilot — portal route gating (only active once PORTAL_LOGIN_URL is set)")
+    section("SaaS pilot: portal route gating (only active once PORTAL_LOGIN_URL is set)")
     # HANDOFF_SECRET/STORE_ID are already set (module-level, above); the gate
     # additionally requires PORTAL_LOGIN_URL, so toggling just that here
     # proves the real Pi/Tailscale deployment (which never sets it) is
@@ -1003,13 +1003,13 @@ def run():
     check("cashier loads normally once sso_authenticated is set", resp.status_code == 200, resp.status_code)
 
     resp = client.get("/admin", follow_redirects=False)
-    check("admin routes are exempt from the portal gate — not sent to the portal login",
+    check("admin routes are exempt from the portal gate, not sent to the portal login",
           resp.status_code == 302 and resp.headers.get("Location") != app_module.PORTAL_LOGIN_URL,
           resp.headers.get("Location"))
 
     with client.session_transaction() as sess:
         sess.pop("sso_authenticated", None)
-    app_module.PORTAL_LOGIN_URL = None  # restore — real deployment never sets this
+    app_module.PORTAL_LOGIN_URL = None  # restore, real deployment never sets this
 
     # ---------------------------------------------------------------
     print(f"\n{'='*40}\n{_passed} passed, {_failed} failed\n{'='*40}")

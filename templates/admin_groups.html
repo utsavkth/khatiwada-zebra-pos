@@ -10,7 +10,7 @@
   <strong>weighed</strong> group (e.g. Rice) opens a variety list then the weight
   pad; a <strong>fixed-price</strong> group (e.g. LPG, Oil) opens a list you tap
   to add straight to the bill. A group's button appears once it has at least one
-  product — assign products to a group on the product's <em>Edit</em> page.
+  product. Assign products to a group on the product's <em>Edit</em> page.
 </p>
 
 <table>
@@ -25,7 +25,7 @@
     <tr class="{{ 'inactive' if not g.active }}">
       <td>{{ g.sort_order }}</td>
       <td>{{ g.name }}</td>
-      <td>{{ g.name_ne or "—" }}</td>
+      <td>{{ g.name_ne or "N/A" }}</td>
       <td>{{ "weighed (per kg)" if g.is_weighed else "fixed price" }}</td>
       <td class="num">{{ counts.get(g.name, 0) }}</td>
       <td>{{ "yes" if g.active else "hidden" }}</td>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Print labels — {{ store_name }}</title>
+<title>Print labels for {{ store_name }}</title>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -56,7 +56,7 @@
   }
   .label-name { font-weight: 800; font-size: 0.95rem; line-height: 1.2; }
   /* Printed labels have no language toggle to fall back on (unlike the
-     on-screen UI's productDisplayName), so both names show together —
+     on-screen UI's productDisplayName), so both names show together,
      same "always show both, no gating" pattern as the exit-confirm prompt. */
   .label-name-ne { font-weight: 700; font-size: 0.85rem; line-height: 1.2; color: #475569; }
   .label-price { font-size: 0.8rem; color: #64748b; font-variant-numeric: tabular-nums; }
@@ -74,10 +74,10 @@
 <body>
 
 <div class="toolbar">
-  <button type="button" onclick="window.print()">🖨️ Print</button>
+  <button type="button" onclick="window.print()">Print</button>
   <a href="{{ url_for('admin_labels') }}">← Back to labels</a>
 </div>
-<p class="hint">{{ labels | length }} label{{ "s" if labels | length != 1 else "" }} ready — use your browser's print dialog (sticker/label paper if you have it, plain paper + scissors otherwise).</p>
+<p class="hint">{{ labels | length }} label{{ "s" if labels | length != 1 else "" }} ready. Use your browser's print dialog (sticker/label paper if you have it, plain paper + scissors otherwise).</p>
 
 <div class="label-sheet">
   {% for l in labels %}

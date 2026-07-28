@@ -7,7 +7,7 @@
 </div>
 
 {% if dup_extra_count %}
-<p class="error">⚠️ {{ dup_extra_count }} duplicate product cop{{ 'y' if dup_extra_count == 1 else 'ies' }} found.
+<p class="error">{{ dup_extra_count }} duplicate product cop{{ 'y' if dup_extra_count == 1 else 'ies' }} found.
   <a href="{{ url_for('admin_duplicates') }}"><strong>Review &amp; clean up →</strong></a></p>
 {% endif %}
 
@@ -41,7 +41,7 @@
         {% endif %}
       </td>
       <td><strong>{{ p.name }}</strong></td>
-      <td>{{ p.barcode or "—" }}</td>
+      <td>{{ p.barcode or "N/A" }}</td>
       <td><span class="chip chip-{{ p.category }}">{{ p.category }}</span></td>
       <td class="num">{{ p.price | rs }}</td>
       <td>{{ p.unit }}</td>

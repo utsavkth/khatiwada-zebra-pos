@@ -1,8 +1,8 @@
 """SQLite connection helpers and schema initialisation for Zebra POS v2.
 
 Copied from the proven Nepal Grocery POS db.py (same schema, same data files).
-IMPORTANT: this app shares the LIVE store.db/sales.db with the original app —
-two containers, one volume — so every connection runs in WAL mode with a busy
+IMPORTANT: this app shares the LIVE store.db/sales.db with the original app:
+two containers, one volume, so every connection runs in WAL mode with a busy
 timeout (see CLAUDE.md "Relationship to the original app" item 2)."""
 
 import os
@@ -24,11 +24,11 @@ SHOP_TZ = ZoneInfo("Asia/Kathmandu")
 # Cashier quick-tap groups. Groups are now user-defined rows in the `groups`
 # table (name, optional Nepali name, weighed-or-fixed, order). A product's
 # membership is stored in its `weighed_group` column (kept for the light
-# migration — it now holds any group name, weighed or fixed, not just weighed).
+# migration, it now holds any group name, weighed or fixed, not just weighed).
 # WEIGHED_GROUPS is only the default weighed set seeded on first run + the
 # keyword targets for auto-classifying weighed items that arrive without a group.
 WEIGHED_GROUPS = ["Rice", "Dal", "Sugar", "Flour", "Other"]
-# (name, name_ne, is_weighed, sort_order) — seeded once, then editable in admin.
+# (name, name_ne, is_weighed, sort_order), seeded once, then editable in admin.
 DEFAULT_GROUPS = [
     ("Rice", "चामल", 1, 10),
     ("Dal", "दाल", 1, 20),
@@ -158,7 +158,7 @@ def init_store_db():
     # served via the /media/<filename> route. Keeps the database small and fast.
     if "image_path" not in columns:
         conn.execute("ALTER TABLE products ADD COLUMN image_path TEXT")
-    # Migration: drop the CHECK pinning `unit` to a fixed list — the allowed
+    # Migration: drop the CHECK pinning `unit` to a fixed list. The allowed
     # units live in app code (UNITS in app.py) now, same approach as `category`
     # above, so adding a unit (litre was the first) is a code change only.
     # Runs after the column migrations above, so every column exists here.
@@ -344,7 +344,7 @@ def search_products(query, limit=20):
 
 
 def get_active_products():
-    """Every active product — the cashier's offline catalog mirror."""
+    """Every active product, the cashier's offline catalog mirror."""
     conn = get_store_db()
     rows = conn.execute(
         "SELECT * FROM products WHERE active = 1 ORDER BY name"
@@ -354,7 +354,7 @@ def get_active_products():
 
 
 def get_weighed_products():
-    """Every active weighed product — the candidate list for the admin
+    """Every active weighed product, the candidate list for the admin
     shelf-label barcode print page (CLAUDE.md decision 3)."""
     conn = get_store_db()
     rows = conn.execute(
@@ -366,7 +366,7 @@ def get_weighed_products():
 
 def all_barcodes():
     """Every barcode currently in use, active or not (matches the existing
-    duplicate-guard convention of checking across both) — kept unique when
+    duplicate-guard convention of checking across both), kept unique when
     generating shelf-label codes."""
     conn = get_store_db()
     rows = conn.execute("SELECT barcode FROM products WHERE barcode IS NOT NULL").fetchall()
@@ -393,7 +393,7 @@ def get_product_by_barcode(barcode):
 
 def find_duplicate_product(name, barcode=None, exclude_id=None):
     """Return an existing product that looks like a duplicate of the one being
-    added — matched by barcode (if given) or by name (case-insensitive), across
+    added, matched by barcode (if given) or by name (case-insensitive), across
     active AND inactive rows. Used to warn before creating an accidental copy.
     exclude_id skips a given product (so editing itself isn't a 'duplicate')."""
     conn = get_store_db()
@@ -483,7 +483,7 @@ def set_group_active(group_id, active):
 
 def delete_group(group_id):
     """Remove a group. Member products are un-grouped (their weighed_group cleared),
-    not deleted — they stay in the catalogue and remain searchable."""
+    not deleted. They stay in the catalogue and remain searchable."""
     conn = get_store_db()
     row = conn.execute("SELECT name FROM groups WHERE id = ?", (group_id,)).fetchone()
     if row:
@@ -507,7 +507,7 @@ def group_product_counts():
 
 def get_cashier_groups():
     """Active groups (in display order) that have at least one active product,
-    each with its member products — this drives the cashier quick-tap buttons."""
+    each with its member products. This drives the cashier quick-tap buttons."""
     conn = get_store_db()
     groups = conn.execute("SELECT * FROM groups WHERE active = 1 ORDER BY sort_order, name").fetchall()
     products = conn.execute(
@@ -623,7 +623,7 @@ def set_product_active(product_id, active):
 
 def delete_product(product_id):
     """Permanently remove a product (for junk/accidental entries). Safe because
-    sales store a product_name snapshot, not a foreign key — past sales are
+    sales store a product_name snapshot, not a foreign key, so past sales are
     unaffected. For discontinued-but-real products, prefer set_product_active."""
     conn = get_store_db()
     conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
@@ -632,7 +632,7 @@ def delete_product(product_id):
 
 
 def find_duplicate_groups():
-    """Group products that are duplicates of each other — same barcode, or (for
+    """Group products that are duplicates of each other: same barcode, or (for
     products with no barcode) same name (case-insensitive). Returns a list of
     groups, each {'keep': <oldest product>, 'remove': [<extra products>]}, only
     for groups with more than one member. Keeps the lowest-id (original) row."""
@@ -780,7 +780,7 @@ def import_sale(client_uuid, items, date=None, time=None):
     """Idempotently import one client-queued sale (the offline outbox).
 
     The sale keeps the Kathmandu date/time the CLIENT recorded at the moment
-    of sale — an outage shouldn't shift sales to whenever the connection came
+    of sale. An outage shouldn't shift sales to whenever the connection came
     back. Malformed/missing timestamps fall back to server now. Returns
     (sale_dict, imported): imported is False when this client_uuid was
     already imported, in which case nothing is written.
@@ -822,7 +822,7 @@ def import_sale(client_uuid, items, date=None, time=None):
             ],
         )
         # Same transaction as the sale itself: either the sale AND its ledger
-        # row commit together, or neither does — the idempotency guarantee.
+        # row commit together, or neither does. That's the idempotency guarantee.
         conn.execute(
             "INSERT INTO zebra_sale_imports (client_uuid, sale_id, imported_at) VALUES (?, ?, ?)",
             (client_uuid, sale_id, now.isoformat()),

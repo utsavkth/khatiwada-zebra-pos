@@ -1,14 +1,14 @@
 /* Offline storage for the Zebra cashier (loaded before zebra.js).
    Two IndexedDB stores, wrapped in promises, exposed as the ZebraOffline
    global:
-     - "catalog": one record — the full /api/catalog payload (products +
+     - "catalog": one record, the full /api/catalog payload (products +
        quick-tap groups), mirrored while online so barcode lookups, name
        search and the quick-tap buttons keep working when the server is
-       unreachable (the server is in Sydney, the shop in Kathmandu — any
+       unreachable (the server is in Sydney, the shop in Kathmandu, any
        internet problem takes it away entirely).
      - "outbox": completed sales that couldn't reach the server, keyed by a
        client-generated UUID so the /api/sales/sync endpoint can import them
-       idempotently — a retry or a lost response can never double-record.
+       idempotently. A retry or a lost response can never double-record.
    No frameworks, no external libraries (confirmed decision 1). */
 
 (function () {
@@ -47,7 +47,7 @@
           const store = t.objectStore(storeName);
           const result = work(store);
           // work() returns undefined for write-only calls (e.g. store.put()
-          // with nothing to read back) — only unwrap __value when a holder
+          // with nothing to read back), only unwrap __value when a holder
           // from reqValue() was actually returned.
           t.oncomplete = () => resolve(result && result.__value !== undefined ? result.__value : result);
           t.onerror = () => reject(t.error);
@@ -78,7 +78,7 @@
     },
 
     queueSale(sale) {
-      // sale: { client_uuid, date, time, items } — same shape the
+      // sale: { client_uuid, date, time, items }, same shape the
       // /api/sales/sync endpoint accepts.
       return tx("outbox", "readwrite", (store) => {
         store.put(sale);

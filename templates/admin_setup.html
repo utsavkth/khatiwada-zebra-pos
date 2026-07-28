@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Set admin password — {{ store_name }}</title>
+<title>Set admin password for {{ store_name }}</title>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +16,7 @@
     <span>POS</span>
   </div>
   <h1>Set admin password</h1>
-  <p class="hint">First-time setup — choose a password for the admin panel. Keep it safe; you'll need it to manage products and view reports.</p>
+  <p class="hint">First-time setup. Choose a password for the admin panel. Keep it safe; you'll need it to manage products and view reports.</p>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   <label for="password">New password</label>
   <input id="password" name="password" type="password" autofocus autocomplete="new-password" minlength="{{ min_len }}" required>

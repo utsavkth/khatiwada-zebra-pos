@@ -11,7 +11,7 @@
       <thead><tr><th>Date (BS)</th><th>Date (AD)</th><th class="num">Sales</th><th class="num">Total</th></tr></thead>
       <tbody>
         {% for r in daily %}
-        <tr><td>{{ r.bs or "—" }}</td><td>{{ r.date }}</td><td class="num">{{ r.sales_count }}</td><td class="num">{{ r.total | rs }}</td></tr>
+        <tr><td>{{ r.bs or "N/A" }}</td><td>{{ r.date }}</td><td class="num">{{ r.sales_count }}</td><td class="num">{{ r.total | rs }}</td></tr>
         {% else %}
         <tr><td colspan="4" class="empty">No sales yet.</td></tr>
         {% endfor %}
@@ -20,7 +20,7 @@
   </section>
 
   <section>
-    <h2>Monthly — Nepali calendar (Bikram Sambat month)</h2>
+    <h2>Monthly: Nepali calendar (Bikram Sambat month)</h2>
     <table>
       <thead><tr><th>BS month</th><th class="num">Sales</th><th class="num">Total</th></tr></thead>
       <tbody>
@@ -48,7 +48,7 @@
   </section>
 
   <section>
-    <h2>Monthly — Gregorian (AD month)</h2>
+    <h2>Monthly: Gregorian (AD month)</h2>
     <table>
       <thead><tr><th>Month</th><th class="num">Sales</th><th class="num">Total</th></tr></thead>
       <tbody>
