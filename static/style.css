@@ -5,13 +5,17 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 :root {
-  /* Palette matched to the pos-saas-landing marketing site for brand
-     consistency (2026-07-27) -- cream/terracotta/green instead of the
-     previous slate/blue/green scheme. --success is a new, separate
-     variable so the scan/checkout buttons and the weighed-category tiles
-     keep their green regardless of what --brand is (type-colour coding
-     stays: weighed=green, LPG=orange, pinned=indigo -- decision 17). */
+  /* Palette and type matched to the pos-saas-landing marketing site for
+     brand consistency (2026-07-27, extended 2026-07-29 to cover fonts,
+     the page background, and the quick-tap tile colours). --success is
+     its own variable, retargeted to the same landing green as the
+     weighed-category tiles -- both mean "go", so sharing the family is
+     intentional rather than accidental. Category colour-coding itself is
+     unchanged (decision 17): weighed/LPG/pinned still read as three
+     distinct colours, just drawn from the landing palette now instead of
+     the old unrelated green/orange/indigo. */
   --panel: #ffffff;
+  --cream: #FBF6ED;        /* landing cream -- page background */
   --ink: #2B2019;          /* landing ink */
   --header: #2F4B3C;       /* landing green -- dark app header */
   --muted: #6B5D4F;        /* landing brown */
@@ -21,8 +25,8 @@
   --brand: #B5502C;        /* landing terracotta -- primary action colour */
   --brand-dark: #954025;
   --brand-soft: #F3E3D3;
-  --success: #22c55e;      /* kept as-is: dedicated confirm/success green */
-  --success-dark: #15803d;
+  --success: var(--green);       /* landing green, shared with the weighed tile */
+  --success-dark: var(--green-dark);
   --green: #3E5C4B;        /* landing green-light -- secondary green text (prices) */
   --green-dark: #2F4B3C;   /* landing green */
   --green-soft: #E4EAE5;   /* landing green-mist */
@@ -37,12 +41,23 @@
   --shadow-sm: 0 1px 2px rgba(43,32,25,.06), 0 1px 3px rgba(43,32,25,.08);
   --shadow-md: 0 4px 14px rgba(43,32,25,.08), 0 2px 6px rgba(43,32,25,.05);
   --shadow-lg: 0 18px 45px rgba(43,32,25,.28);
+  --font-heading: 'Baloo 2', 'Noto Sans Devanagari', sans-serif;
+  --font-body: 'Nunito', 'Noto Sans Devanagari', sans-serif;
+  /* Quick-tap tile families -- each pulled straight from the landing
+     palette, three distinct hues (green / terracotta / brown) so staff
+     still tell the tile types apart at a glance (decision 17). */
+  --tile-weighed: var(--green);
+  --tile-weighed-dark: var(--green-dark);
+  --tile-lpg: #D9895F;            /* landing terracotta-light */
+  --tile-lpg-dark: var(--accent-dark);
+  --tile-pinned: #8B7A63;         /* landing brown-2 */
+  --tile-pinned-dark: var(--muted);
 }
 
 html, body {
   height: 100%;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: #f4f6f8;
+  font-family: var(--font-body);
+  background: var(--cream);
   color: var(--ink);
   font-size: 18px;
   -webkit-font-smoothing: antialiased;
@@ -83,8 +98,9 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 800;
-  font-size: 1.15rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.2rem;
   color: #fff;
   letter-spacing: -0.01em;
   overflow: hidden;
@@ -237,9 +253,9 @@ html, body {
 .quick-taps .tap:active { transform: translateY(1px) scale(0.99); filter: brightness(0.93); }
 /* Type-colour coding stays (weighed=green, LPG=orange, pinned=indigo — decision 17),
    tuned to the redesign palette. */
-.quick-taps .tap-weighed { background: linear-gradient(155deg, var(--success), var(--success-dark)); }
-.quick-taps .tap-lpg { background: linear-gradient(155deg, #fb923c, var(--amber-dark)); }
-.quick-taps .tap-pinned { background: linear-gradient(155deg, #6366f1, #4338ca); }
+.quick-taps .tap-weighed { background: linear-gradient(155deg, var(--tile-weighed), var(--tile-weighed-dark)); }
+.quick-taps .tap-lpg { background: linear-gradient(155deg, var(--tile-lpg), var(--tile-lpg-dark)); }
+.quick-taps .tap-pinned { background: linear-gradient(155deg, var(--tile-pinned), var(--tile-pinned-dark)); }
 /* Media square on each tile: an emoji icon (weighed category), a product photo,
    or a letter fallback — so tiles look consistent with or without a photo. */
 .tap-media {
@@ -298,7 +314,8 @@ html, body {
   justify-content: space-between;
   gap: 10px;
   padding: 14px 18px;
-  font-size: 1rem;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--ink);
   border-bottom: 1px solid var(--border);
@@ -437,7 +454,7 @@ html, body {
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
 }
-.modal-box h3 { font-size: 1.3rem; letter-spacing: -0.01em; }
+.modal-box h3 { font-family: var(--font-heading); font-size: 1.3rem; letter-spacing: -0.01em; }
 
 .modal-actions { display: flex; gap: 10px; }
 .modal-actions .btn { flex: 1; }
@@ -445,7 +462,7 @@ html, body {
 .btn-danger-solid { background: var(--red); }
 
 /* Duplicate warning — deliberately loud so staff notice before adding a copy */
-.dup-title { color: var(--amber); font-size: 1.5rem; }
+.dup-title { color: var(--amber); font-family: var(--font-heading); font-size: 1.5rem; }
 .dup-existing {
   font-size: 1.15rem;
   font-weight: 800;
@@ -788,7 +805,7 @@ html, body {
   justify-content: center;
 }
 .success-check svg { width: 48px; height: 48px; }
-.success-title { font-size: 1.35rem; font-weight: 800; color: var(--ink); }
+.success-title { font-family: var(--font-heading); font-size: 1.35rem; font-weight: 800; color: var(--ink); }
 .success-total {
   font-size: 2.5rem;
   font-weight: 800;

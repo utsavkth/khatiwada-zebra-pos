@@ -4,16 +4,18 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Palette matched to the pos-saas-landing marketing site (2026-07-27),
-     same mapping as static/style.css -- see that file for the full
-     reasoning. Category badge colours (chip-grocery/lpg/etc.) are left
-     untouched since they're a distinct functional colour-coding, not part
-     of the primary brand palette. */
+  /* Palette and type matched to the pos-saas-landing marketing site
+     (2026-07-27, extended 2026-07-29 to cover fonts and the page
+     background), same mapping as static/style.css -- see that file for
+     the full reasoning. Category badge colours (chip-grocery/lpg/etc.)
+     are left untouched since they're a distinct functional colour-coding,
+     not part of the primary brand palette. */
   --ink: #2B2019;          /* landing ink */
+  --cream: #FBF6ED;        /* landing cream -- page background */
   --header: #2F4B3C;       /* landing green -- dark sidebar */
   --muted: #6B5D4F;        /* landing brown */
   --accent: #B5502C;       /* landing terracotta (legacy links) */
-  --brand: #B5502C;        /* landing terracotta — primary action colour */
+  --brand: #B5502C;        /* landing terracotta, primary action colour */
   --brand-dark: #954025;
   --brand-soft: #F3E3D3;
   --green: #3E5C4B;        /* landing green-light */
@@ -23,11 +25,13 @@
   --shadow-sm: 0 1px 2px rgba(43,32,25,.06), 0 1px 3px rgba(43,32,25,.08);
   --shadow-md: 0 4px 14px rgba(43,32,25,.08), 0 2px 6px rgba(43,32,25,.05);
   --shadow-lg: 0 18px 45px rgba(43,32,25,.28);
+  --font-heading: 'Baloo 2', 'Noto Sans Devanagari', sans-serif;
+  --font-body: 'Nunito', 'Noto Sans Devanagari', sans-serif;
 }
 
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: #f4f6f8;
+  font-family: var(--font-body);
+  background: var(--cream);
   color: var(--ink);
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
@@ -56,8 +60,9 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  font-family: var(--font-heading);
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: #fff;
   padding: 6px 8px 16px;
   white-space: nowrap;
@@ -101,8 +106,8 @@ body {
 
 .admin-main { flex: 1; min-width: 0; max-width: 1040px; padding: 28px 32px; }
 
-h1 { font-size: 1.5rem; margin-bottom: 16px; letter-spacing: -0.02em; }
-h2 { font-size: 1.05rem; margin-bottom: 10px; }
+h1 { font-family: var(--font-heading); font-size: 1.5rem; margin-bottom: 16px; letter-spacing: -0.02em; }
+h2 { font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 10px; }
 
 .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .page-head h1 { margin-bottom: 0; }
@@ -177,7 +182,7 @@ button.danger:hover { background: #b91c1c; }
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
 }
-.modal-box h3 { font-size: 1.3rem; letter-spacing: -0.01em; }
+.modal-box h3 { font-family: var(--font-heading); font-size: 1.3rem; letter-spacing: -0.01em; }
 .confirm-text { font-size: 1rem; color: var(--muted); line-height: 1.5; }
 .modal-actions { display: flex; gap: 10px; }
 .modal-actions .btn { flex: 1; }
@@ -349,13 +354,13 @@ td.actions .button.small:hover, td.actions button.small:hover {
 }
 .login-brand img { flex-shrink: 0; }
 .login-brand span {
-  font-family: 'Baloo 2', system-ui, sans-serif;
+  font-family: var(--font-heading);
   font-weight: 800;
   font-size: 1.5rem;
   letter-spacing: 0.02em;
   color: var(--ink);
 }
-.login-box h1 { font-size: 1.35rem; text-align: center; margin-bottom: 6px; }
+.login-box h1 { font-family: var(--font-heading); font-size: 1.35rem; text-align: center; margin-bottom: 6px; }
 .login-box label { font-weight: 600; }
 .back-link { display: block; text-align: center; margin-top: 4px; color: var(--accent); text-decoration: none; font-weight: 600; }
 .back-link:hover { text-decoration: underline; }
