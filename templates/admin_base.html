@@ -22,12 +22,14 @@
 
   <div class="side-section">Reports &amp; data</div>
   <a class="side-link {{ 'active' if ep == 'admin_reports' }}" href="{{ url_for('admin_reports') }}">Reports</a>
-  <a class="side-link" href="{{ url_for('admin_sales_export') }}">Export sales CSV</a>
+  <a class="side-link" href="{{ url_for('admin_sales_export') }}" id="export-csv-link"
+     data-confirm-title="Export sales CSV?" data-confirm-text="Download every sale as a CSV file?">Export sales CSV</a>
   <a class="side-link {{ 'active' if ep == 'admin_import' }}" href="{{ url_for('admin_import') }}">Import products</a>
 
   <div class="side-section">Account</div>
   <a class="side-link {{ 'active' if ep == 'admin_change_password' }}" href="{{ url_for('admin_change_password') }}">Change password</a>
-  <a class="side-link" href="{{ url_for('admin_logout') }}">Log out</a>
+  <a class="side-link" href="{{ url_for('admin_logout') }}" id="logout-link"
+     data-confirm-title="Log out?" data-confirm-text="You will need your password to sign back in.">Log out</a>
 </aside>
 <main class="admin-main">
   {% with messages = get_flashed_messages() %}
@@ -36,6 +38,47 @@
   {% block content %}{% endblock %}
 </main>
 </div>
+
+<!-- Shared yes/no confirmation modal for actions worth a pause before they
+     run: CSV export triggers a real download, and logout ends the session.
+     It guards against an accidental sidebar tap the same way NEW SALE
+     already guards against an accidental checkout. One modal, driven by
+     whichever link was actually clicked, rather than a separate copy per
+     action. -->
+<div id="confirm-action-modal" class="modal" hidden>
+  <div class="modal-box">
+    <h3 id="confirm-action-title">Are you sure?</h3>
+    <p class="confirm-text" id="confirm-action-text"></p>
+    <div class="modal-actions">
+      <button id="confirm-action-cancel" class="btn btn-cancel" type="button">Cancel</button>
+      <a id="confirm-action-ok" class="btn btn-ok" href="#">Continue</a>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  "use strict";
+  var modal = document.getElementById("confirm-action-modal");
+  var titleEl = document.getElementById("confirm-action-title");
+  var textEl = document.getElementById("confirm-action-text");
+  var okBtn = document.getElementById("confirm-action-ok");
+  var cancelBtn = document.getElementById("confirm-action-cancel");
+
+  ["export-csv-link", "logout-link"].forEach(function (id) {
+    var link = document.getElementById(id);
+    if (!link) return;
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
+      titleEl.textContent = link.dataset.confirmTitle;
+      textEl.textContent = link.dataset.confirmText;
+      okBtn.href = link.href;
+      modal.hidden = false;
+    });
+  });
+
+  cancelBtn.addEventListener("click", function () { modal.hidden = true; });
+})();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

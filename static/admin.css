@@ -150,6 +150,53 @@ button.danger:hover { background: #b91c1c; }
 .button.secondary { background: var(--muted); }
 .button.secondary:hover { background: #4A3E32; }
 
+/* Confirmation modal, shared by the sidebar's export and logout links */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 32, 25, 0.5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+.modal[hidden] { display: none; }
+.modal-box {
+  background: #fff;
+  border-radius: 18px;
+  padding: 22px;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 95dvh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+.modal-box h3 { font-size: 1.3rem; letter-spacing: -0.01em; }
+.confirm-text { font-size: 1rem; color: var(--muted); line-height: 1.5; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn { flex: 1; }
+.btn {
+  display: inline-block;
+  text-align: center;
+  border: none;
+  border-radius: 9px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  color: #fff;
+}
+.btn-cancel { background: var(--muted); }
+.btn-ok { background: var(--brand); }
+.btn-ok:hover { background: var(--brand-dark); }
+
 input, select {
   padding: 9px 12px;
   border: 1px solid #cbd5e1;
