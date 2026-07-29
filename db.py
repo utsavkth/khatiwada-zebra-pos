@@ -327,6 +327,15 @@ def is_admin_password_set():
     return get_admin_password_hash() is not None
 
 
+def clear_admin_password_hash():
+    """Wipe the stored admin password so the next /admin visit shows the
+    Set admin password screen again, same as a brand new install."""
+    conn = get_store_db()
+    conn.execute("DELETE FROM settings WHERE key = ?", (ADMIN_PW_KEY,))
+    conn.commit()
+    conn.close()
+
+
 def search_products(query, limit=20):
     """Search active products by name (case-insensitive substring) or barcode."""
     conn = get_store_db()

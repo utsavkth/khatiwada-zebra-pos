@@ -246,6 +246,17 @@ def sso_login():
         # pos-saas-accounts' admin_access_customer_admin route).
         session["admin"] = True
         return redirect(url_for("admin_home"))
+    if payload.get("scope") == "admin-reset":
+        # Master Dashboard's "Reset admin password" for when the internal
+        # Admin Portal password is forgotten. Wipes the stored hash and
+        # drops straight onto the Set admin password screen, same as a
+        # brand new install; deliberately does NOT stamp session["admin"]
+        # itself, so whoever lands here still has to choose the new
+        # password through admin_setup rather than being silently logged
+        # in by the reset link alone.
+        db.clear_admin_password_hash()
+        session.pop("admin", None)
+        return redirect(url_for("admin_setup"))
     return redirect(url_for("cashier"))
 
 

@@ -973,6 +973,24 @@ def run():
         check("no scope -> session[admin] not set", not sess.get("admin"))
 
     # ---------------------------------------------------------------
+    section("SaaS pilot: /sso-login with scope=admin-reset (Master Dashboard 'Reset admin password')")
+    check("admin password is set before the reset", db.is_admin_password_set())
+    reset_scope_token = handoff.dumps({"store_id": "teststore", "subdomain": "teststore", "scope": "admin-reset"})
+    resp = client.get(f"/sso-login?token={reset_scope_token}", follow_redirects=False)
+    check("admin-reset token -> redirect to /admin/setup, not /admin",
+          resp.status_code == 302 and resp.headers["Location"] == "/admin/setup", resp.headers.get("Location"))
+    check("admin-reset actually wiped the stored password hash", not db.is_admin_password_set())
+    with client.session_transaction() as sess:
+        check("admin-reset does NOT stamp session[admin] itself", not sess.get("admin"))
+        check("admin-reset still stamps sso_authenticated", sess.get("sso_authenticated") is True)
+    check("visiting /admin now shows the setup screen again",
+          b"Set admin password" in client.get("/admin/setup").data)
+    r = client.post("/admin/setup", data={"password": ADMIN_PW, "confirm": ADMIN_PW}, follow_redirects=False)
+    check("a fresh admin password can be set right after the reset",
+          r.status_code == 302 and db.is_admin_password_set())
+    client.get("/admin/logout")
+
+    # ---------------------------------------------------------------
     section("SaaS pilot: portal route gating (only active once PORTAL_LOGIN_URL is set)")
     # HANDOFF_SECRET/STORE_ID are already set (module-level, above); the gate
     # additionally requires PORTAL_LOGIN_URL, so toggling just that here

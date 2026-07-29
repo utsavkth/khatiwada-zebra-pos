@@ -278,6 +278,14 @@ decoding with `"scope": "admin"` stamps `session["admin"]` and redirects to `/ad
 lets the Master Dashboard's "Access admin" button into this store's internal Admin Portal via a 60-second
 signed token, not a permanent shared password. No-scope tokens behave exactly as before.
 
+**`scope="admin-reset"` on the handoff token (added 2026-07-29, mirrors `nepal-pos`'s identical addition):** a
+token decoding with `"scope": "admin-reset"` calls the new `db.clear_admin_password_hash()` helper (`DELETE
+FROM settings WHERE key = admin_password_hash`) and redirects to `/admin/setup` instead of `/admin`,
+deliberately NOT stamping `session["admin"]` itself so the new password still has to be chosen through the
+normal setup screen. Lets the Master Dashboard's "Reset admin password" button clear a forgotten internal
+Admin Portal password without direct database access from the dashboard side, minted by `pos-saas-accounts`'
+`admin_reset_customer_admin_password` route.
+
 ## Database schema
 
 Identical to the original app (Nepal Grocery POS) — see that project's
