@@ -6,8 +6,8 @@
 
 const I18N = {
   en: {
-    admin: "Admin",
-    scan: "SCAN",
+    admin: "⚙ Admin",
+    scan: "📷 SCAN",
     searchPlaceholder: "Search item…",
     quickAddBtn: "+ Quick Add item",
     bill: "Current Sale",
@@ -45,7 +45,7 @@ const I18N = {
     currentPrice: "Current price: ",
     normalPrice: "normal ",
     scanBarcodeTitle: "Scan barcode",
-    flipCamera: "Flip camera",
+    flipCamera: "🔄 Flip camera",
     cantScan: "Can't scan? Type the barcode number:",
     barcodePlaceholder: "Barcode number",
     startingCamera: "Starting camera…",
@@ -116,8 +116,8 @@ const I18N = {
     qrMissing: "Fonepay QR image not installed yet. Save the photo as static/fonepay-static-qr.jpg.",
   },
   ne: {
-    admin: "एडमिन",
-    scan: "स्क्यान",
+    admin: "⚙ एडमिन",
+    scan: "📷 स्क्यान",
     searchPlaceholder: "सामान खोज्नुहोस्…",
     quickAddBtn: "+ नयाँ सामान थप्नुहोस्",
     bill: "बिल",
@@ -155,7 +155,7 @@ const I18N = {
     currentPrice: "अहिलेको मूल्य: ",
     normalPrice: "साधारण ",
     scanBarcodeTitle: "बारकोड स्क्यान गर्नुहोस्",
-    flipCamera: "क्यामेरा फेर्नुहोस्",
+    flipCamera: "🔄 क्यामेरा फेर्नुहोस्",
     cantScan: "स्क्यान भएन? बारकोड नम्बर टाइप गर्नुहोस्:",
     barcodePlaceholder: "बारकोड नम्बर",
     startingCamera: "क्यामेरा खुल्दैछ…",
